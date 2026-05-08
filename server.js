@@ -27,7 +27,6 @@ const YACHTS = [
   { mmsi: '319201400', name: 'Moonrise',  owner: 'Undisclosed',        length: 90,  flag: '🇰🇾' },
   { mmsi: '319093400', name: 'My Seanna', owner: 'Undisclosed',        length: 73,  flag: '🇰🇾' },
 ];
-];
 
 // ── EMISSION CALCULATION (IMO MEPC methodology) ──────────────────────────────
 // MCR estimated from length (regression from Lloyd's Register data)
