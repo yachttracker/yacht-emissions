@@ -17,7 +17,6 @@ const pool = new Pool({
 
 // ── YACHT LIST (MMSI + static data) ─────────────────────────────────────────
 const YACHTS = [
-const YACHTS = [
   { mmsi: '319225400', name: 'Koru',      owner: 'Jeff Bezos',         length: 127, flag: '🇰🇾' },
   { mmsi: '319032600', name: 'Musashi',   owner: 'Larry Ellison',      length: 88,  flag: '🇰🇾' },
   { mmsi: '227003660', name: 'Symphony',  owner: 'Bernard Arnault',    length: 101, flag: '🇫🇷' },
