@@ -17,11 +17,17 @@ const pool = new Pool({
 
 // ── YACHT LIST (MMSI + static data) ─────────────────────────────────────────
 const YACHTS = [
-  { mmsi: '319225400', name: 'Koru',       owner: 'Jeff Bezos',        length: 127, flag: '🇰🇾' },
-  { mmsi: '319094900', name: 'Flying Fox', owner: 'Undisclosed',       length: 136, flag: '🇧🇸' },
-  { mmsi: '319074900', name: 'Dilbar',     owner: 'Alisher Usmanov',   length: 156, flag: '🇨🇮' },
-  { mmsi: '319085900', name: 'Solaris',    owner: 'Roman Abramovich',  length: 140, flag: '🇧🇸' },
-  { mmsi: '308500800', name: 'Lady Moura', owner: 'Nasser Al-Rashid',  length: 105, flag: '🇧🇸' },
+const YACHTS = [
+  { mmsi: '319225400', name: 'Koru',      owner: 'Jeff Bezos',         length: 127, flag: '🇰🇾' },
+  { mmsi: '319032600', name: 'Musashi',   owner: 'Larry Ellison',      length: 88,  flag: '🇰🇾' },
+  { mmsi: '227003660', name: 'Symphony',  owner: 'Bernard Arnault',    length: 101, flag: '🇫🇷' },
+  { mmsi: '319040900', name: 'Aquila',    owner: 'Bill Gates',         length: 88,  flag: '🇰🇾' },
+  { mmsi: '319111900', name: 'Amadea',    owner: 'Suleiman Kerimov',   length: 106, flag: '🇰🇾' },
+  { mmsi: '319104900', name: 'Tis',       owner: 'Undisclosed',        length: 110, flag: '🇨🇮' },
+  { mmsi: '319069900', name: 'Kismet',    owner: 'Shahid Khan',        length: 95,  flag: '🇰🇾' },
+  { mmsi: '319201400', name: 'Moonrise',  owner: 'Undisclosed',        length: 90,  flag: '🇰🇾' },
+  { mmsi: '319093400', name: 'My Seanna', owner: 'Undisclosed',        length: 73,  flag: '🇰🇾' },
+];
 ];
 
 // ── EMISSION CALCULATION (IMO MEPC methodology) ──────────────────────────────
