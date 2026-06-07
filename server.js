@@ -29,16 +29,15 @@ const YACHTS = [
 ];
 
 // ── EMISSION CALCULATION (IMO MEPC methodology) ──────────────────────────────
-// MCR estimated from length (regression from Lloyd's Register data)
 function estimateMCR(lengthM) {
   return Math.round(50 * Math.pow(lengthM, 1.2));
 }
 
 function calcHourlyEmissions(lengthM, speedKnots) {
   const mcr = estimateMCR(lengthM);
-  const loadFactor = speedKnots > 1 ? 0.75 : 0.15; // underway vs hotel load
-  const sfcMain = 185;   // g/kWh
-  const sfcAux  = 210;   // g/kWh
+  const loadFactor = speedKnots > 1 ? 0.75 : 0.15;
+  const sfcMain = 185;
+  const sfcAux  = 210;
   const auxKw   = mcr * 0.15;
 
   const mainFuelKgH = (mcr * loadFactor * sfcMain) / 1e6 * 1000;
@@ -67,7 +66,7 @@ async function setupDB() {
       longitude DOUBLE PRECISION,
       speed_knots DOUBLE PRECISION,
       heading INTEGER,
-      nav_status INTEGER,
+      nav_status TEXT,
       co2_kg_h DOUBLE PRECISION,
       nox_kg_h DOUBLE PRECISION,
       sox_kg_h DOUBLE PRECISION,
@@ -87,12 +86,22 @@ async function fetchAndStore() {
   for (const yacht of YACHTS) {
     try {
       const res = await fetch(
-        `https://api.vesselapi.com/v1/vessel/${yacht.mmsi}/position?filter.idType=mmsi`,
+        `https://api.vesselapi.com/v1/vessel/${yacht.mmsi}/position`,
         { headers: { Authorization: `Bearer ${process.env.VESSEL_API_KEY}` } }
       );
-      const data = await res.json();
-      const p = data.vesselPosition;
-      if (!p) continue;
+
+      if (!res.ok) {
+        console.error(`HTTP ${res.status} for ${yacht.name}`);
+        continue;
+      }
+
+      const p = await res.json();
+
+      // VesselAPI returns position fields directly (no nested object)
+      if (!p || !p.latitude || !p.longitude) {
+        console.warn(`No position data for ${yacht.name}`);
+        continue;
+      }
 
       const em = calcHourlyEmissions(yacht.length, p.sog || 0);
 
@@ -104,11 +113,15 @@ async function fetchAndStore() {
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       `, [
         yacht.mmsi, yacht.name, yacht.owner, yacht.flag, yacht.length,
-        p.latitude, p.longitude, p.sog, p.heading, p.nav_status,
+        p.latitude, p.longitude,
+        p.sog || 0,
+        p.heading || null,
+        p.navStatus || null,       // camelCase per VesselAPI docs
         em.co2_kg_h, em.nox_kg_h, em.sox_kg_h, em.fuel_kg_h,
-        p.timestamp
+        p.timestamp || new Date().toISOString()
       ]);
-      console.log(`Stored: ${yacht.name}`);
+      console.log(`Stored: ${yacht.name} @ ${p.latitude.toFixed(3)}, ${p.longitude.toFixed(3)} — ${p.sog || 0} kn`);
+
     } catch (err) {
       console.error(`Error fetching ${yacht.name}:`, err.message);
     }
@@ -119,52 +132,64 @@ async function fetchAndStore() {
 
 // Latest position + emissions for all yachts
 app.get('/api/yachts/latest', async (req, res) => {
-  const result = await pool.query(`
-    SELECT DISTINCT ON (mmsi) *
-    FROM positions
-    ORDER BY mmsi, timestamp DESC
-  `);
-  res.json(result.rows);
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (mmsi) *
+      FROM positions
+      ORDER BY mmsi, timestamp DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Historical data for a yacht (day/week/month)
 app.get('/api/yacht/:mmsi/history', async (req, res) => {
-  const { mmsi } = req.params;
-  const { period = 'day' } = req.query;
-  const intervals = { day: '1 day', week: '7 days', month: '30 days' };
-  const interval = intervals[period] || '1 day';
+  try {
+    const { mmsi } = req.params;
+    const { period = 'day' } = req.query;
+    const intervals = { day: '1 day', week: '7 days', month: '30 days' };
+    const interval = intervals[period] || '1 day';
 
-  const result = await pool.query(`
-    SELECT timestamp, latitude, longitude, speed_knots,
-           co2_kg_h, fuel_kg_h
-    FROM positions
-    WHERE mmsi = $1
-      AND timestamp > NOW() - INTERVAL '${interval}'
-    ORDER BY timestamp ASC
-  `, [mmsi]);
-  res.json(result.rows);
+    const result = await pool.query(`
+      SELECT timestamp, latitude, longitude, speed_knots,
+             co2_kg_h, fuel_kg_h
+      FROM positions
+      WHERE mmsi = $1
+        AND timestamp > NOW() - INTERVAL '${interval}'
+      ORDER BY timestamp ASC
+    `, [mmsi]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Cumulative emissions per yacht for a period
 app.get('/api/emissions/summary', async (req, res) => {
-  const { period = 'day' } = req.query;
-  const intervals = { day: '1 day', week: '7 days', month: '30 days' };
-  const interval = intervals[period] || '1 day';
+  try {
+    const { period = 'day' } = req.query;
+    const intervals = { day: '1 day', week: '7 days', month: '30 days' };
+    const interval = intervals[period] || '1 day';
 
-  const result = await pool.query(`
-    SELECT
-      mmsi, name, owner, flag, length_m,
-      ROUND(SUM(co2_kg_h)::numeric, 1)  AS co2_kg_total,
-      ROUND(SUM(fuel_kg_h)::numeric, 1) AS fuel_kg_total,
-      ROUND(SUM(nox_kg_h)::numeric, 1)  AS nox_kg_total,
-      COUNT(*) AS data_points,
-      MAX(timestamp) AS last_seen
-    FROM positions
-    WHERE timestamp > NOW() - INTERVAL '${interval}'
-    GROUP BY mmsi, name, owner, flag, length_m
-    ORDER BY co2_kg_total DESC
-  `);
-  res.json(result.rows);
+    const result = await pool.query(`
+      SELECT
+        mmsi, name, owner, flag, length_m,
+        ROUND(SUM(co2_kg_h)::numeric, 1)  AS co2_kg_total,
+        ROUND(SUM(fuel_kg_h)::numeric, 1) AS fuel_kg_total,
+        ROUND(SUM(nox_kg_h)::numeric, 1)  AS nox_kg_total,
+        COUNT(*) AS data_points,
+        MAX(timestamp) AS last_seen
+      FROM positions
+      WHERE timestamp > NOW() - INTERVAL '${interval}'
+      GROUP BY mmsi, name, owner, flag, length_m
+      ORDER BY co2_kg_total DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Health check
@@ -174,9 +199,9 @@ app.get('/health', (_, res) => res.json({ status: 'ok' }));
 const PORT = process.env.PORT || 3000;
 
 setupDB().then(() => {
-  // Fetch immediately on start, then every 10 minutes
   fetchAndStore();
   cron.schedule('*/10 * * * *', fetchAndStore);
-
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });
+
+  
