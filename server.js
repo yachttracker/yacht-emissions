@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const WebSocket = require('ws');
+const { runCoverageTest, getCoverageResult } = require('./debug-coverage');
 
 const app = express();
 app.use(cors());
