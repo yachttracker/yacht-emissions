@@ -1,3 +1,4 @@
+const { runAisTest, getLastTestResult } = require('./debug-ais');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -194,6 +195,17 @@ app.get('/api/emissions/summary', async (req, res) => {
 
 // Health check
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+app.get('/debug/ais-test/start', (req, res) => {
+  runAisTest();
+  res.json({ message: 'AIS-Test gestartet' });
+});
+
+app.get('/debug/ais-test/status', (req, res) => {
+  res.json(getLastTestResult());
+});
+app.get('/debug/ais-test/status', (req, res) => {
+  res.json(getLastTestResult());
+});
 
 // ── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
