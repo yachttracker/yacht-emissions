@@ -222,6 +222,14 @@ app.get('/api/emissions/summary', async (req, res) => {
 
 // Health check
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+app.get('/debug/coverage-test/start', (req, res) => {
+  runCoverageTest();
+  res.json({ message: 'Coverage-Test gestartet (Rotterdam, 20 Sekunden)' });
+});
+
+app.get('/debug/coverage-test/status', (req, res) => {
+  res.json(getCoverageResult());
+});
 
 // ── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
