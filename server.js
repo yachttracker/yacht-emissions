@@ -1,10 +1,8 @@
-const { runAisTest, getLastTestResult } = require('./debug-ais');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const cron = require('node-cron');
 const { Pool } = require('pg');
-const fetch = require('node-fetch');
+const WebSocket = require('ws');
 
 const app = express();
 app.use(cors());
@@ -82,52 +80,79 @@ async function setupDB() {
   console.log('Database ready');
 }
 
-// ── FETCH & STORE POSITIONS ──────────────────────────────────────────────────
-async function fetchAndStore() {
-  console.log('Fetching positions...');
-  for (const yacht of YACHTS) {
-    try {
-      const res = await fetch(
-        `https://api.vesselapi.com/v1/vessel/${yacht.mmsi}/position`,
-        { headers: { Authorization: `Bearer ${process.env.VESSEL_API_KEY}` } }
-      );
+// ── PERMANENTE AIS-VERBINDUNG (aisstream.io) ─────────────────────────────────
+function connectAIS() {
+  const apiKey = process.env.AISSTREAM_API_KEY;
 
-      if (!res.ok) {
-        console.error(`HTTP ${res.status} for ${yacht.name}`);
-        continue;
-      }
-
-      const p = await res.json();
-
-      // VesselAPI returns position fields directly (no nested object)
-      if (!p || !p.latitude || !p.longitude) {
-        console.warn(`No position data for ${yacht.name}`);
-        continue;
-      }
-
-      const em = calcHourlyEmissions(yacht.length, p.sog || 0);
-
-      await pool.query(`
-        INSERT INTO positions
-          (mmsi, name, owner, flag, length_m, latitude, longitude,
-           speed_knots, heading, nav_status,
-           co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-      `, [
-        yacht.mmsi, yacht.name, yacht.owner, yacht.flag, yacht.length,
-        p.latitude, p.longitude,
-        p.sog || 0,
-        p.heading || null,
-        p.navStatus || null,       // camelCase per VesselAPI docs
-        em.co2_kg_h, em.nox_kg_h, em.sox_kg_h, em.fuel_kg_h,
-        p.timestamp || new Date().toISOString()
-      ]);
-      console.log(`Stored: ${yacht.name} @ ${p.latitude.toFixed(3)}, ${p.longitude.toFixed(3)} — ${p.sog || 0} kn`);
-
-    } catch (err) {
-      console.error(`Error fetching ${yacht.name}:`, err.message);
-    }
+  if (!apiKey) {
+    console.error('[AIS] AISSTREAM_API_KEY nicht gesetzt — Verbindung wird nicht aufgebaut');
+    return;
   }
+
+  console.log('[AIS] Verbindung zu aisstream.io wird aufgebaut...');
+  const ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
+  const mmsiList = YACHTS.map(y => y.mmsi);
+
+  ws.on('open', () => {
+    console.log('[AIS] Verbunden. Abonniere', mmsiList.length, 'Yachten...');
+    const subscriptionMessage = {
+      APIKey: apiKey,
+      BoundingBoxes: [[[-180, -90], [180, 90]]],
+      FiltersShipMMSI: mmsiList
+    };
+    ws.send(JSON.stringify(subscriptionMessage));
+  });
+
+  ws.on('message', async (data) => {
+    try {
+      const parsed = JSON.parse(data.toString());
+
+      if (parsed.MessageType === 'PositionReport') {
+        const report = parsed.Message.PositionReport;
+        const meta = parsed.MetaData;
+        const mmsi = String(meta.MMSI || report.UserID);
+
+        const yacht = YACHTS.find(y => y.mmsi === mmsi);
+        if (!yacht) return;
+
+        const lat = report.Latitude;
+        const lon = report.Longitude;
+        const sog = report.Sog || 0;
+        const heading = report.TrueHeading;
+        const navStatus = report.NavigationalStatus;
+
+        const em = calcHourlyEmissions(yacht.length, sog);
+
+        await pool.query(`
+          INSERT INTO positions
+            (mmsi, name, owner, flag, length_m, latitude, longitude,
+             speed_knots, heading, nav_status,
+             co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        `, [
+          yacht.mmsi, yacht.name, yacht.owner, yacht.flag, yacht.length,
+          lat, lon, sog,
+          heading || null,
+          navStatus !== undefined ? String(navStatus) : null,
+          em.co2_kg_h, em.nox_kg_h, em.sox_kg_h, em.fuel_kg_h,
+          meta.time_utc || new Date().toISOString()
+        ]);
+
+        console.log(`[AIS] ${yacht.name}: ${lat.toFixed(3)}, ${lon.toFixed(3)} @ ${sog} kn`);
+      }
+    } catch (err) {
+      console.error('[AIS] Fehler beim Verarbeiten einer Nachricht:', err.message);
+    }
+  });
+
+  ws.on('error', (err) => {
+    console.error('[AIS] WebSocket-Fehler:', err.message);
+  });
+
+  ws.on('close', (code, reason) => {
+    console.warn(`[AIS] Verbindung geschlossen (Code ${code}, Grund: ${reason}). Reconnect in 5 Sekunden...`);
+    setTimeout(connectAIS, 5000);
+  });
 }
 
 // ── API ENDPOINTS ────────────────────────────────────────────────────────────
@@ -196,25 +221,12 @@ app.get('/api/emissions/summary', async (req, res) => {
 
 // Health check
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
-app.get('/debug/ais-test/start', (req, res) => {
-  runAisTest();
-  res.json({ message: 'AIS-Test gestartet' });
-});
-
-app.get('/debug/ais-test/status', (req, res) => {
-  res.json(getLastTestResult());
-});
-app.get('/debug/ais-test/status', (req, res) => {
-  res.json(getLastTestResult());
-});
 
 // ── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 
 setupDB().then(() => {
-  fetchAndStore();
-  cron.schedule('*/10 * * * *', fetchAndStore);
+  connectAIS();
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });
-
   
