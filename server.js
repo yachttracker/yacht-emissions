@@ -12,7 +12,8 @@ app.use(express.json());
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  // DATABASE_SSL=false nur für lokale Tests ohne SSL; Railway nutzt den Standard
+  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }
 });
 
 // ── YACHT LIST (MMSI + static data) ─────────────────────────────────────────
@@ -194,27 +195,66 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
   }
 });
 
-// Cumulative emissions per yacht for a period
+// ── ZEITINTEGRATION ──────────────────────────────────────────────────────────
+// Jede Meldung liefert eine Rate (kg/h). Diese Rate gilt ab ihrem Zeitstempel
+// bis zur nächsten Meldung derselben Yacht, höchstens aber MAX_GAP_HOURS lang.
+// Längere Lücken zählen nicht als Emission, sondern werden als "nicht abgedeckt"
+// ausgewiesen (coverage_h). Annahme: größtes geplantes Polling-Intervall 6 h
+// (unbewegte Yachten) + 1 h Toleranz für verspätete Meldungen.
+const MAX_GAP_HOURS = Number(process.env.MAX_GAP_HOURS) || 7;
+
+// Menge = Σ Rate_i × Dauer_i, Dauer_i = [max(t_i, Fensterbeginn), min(t_(i+1), t_i + MAX_GAP, jetzt)]
+async function integrateEmissions(periodHours) {
+  const result = await pool.query(`
+    WITH bounds AS (
+      SELECT NOW() - make_interval(hours => $1) AS t0,
+             NOW()                              AS t1,
+             make_interval(hours => $2)          AS max_gap
+    ),
+    pts AS (
+      -- Meldungen kurz vor dem Fenster einbeziehen: ihre Rate gilt ggf. noch im Fenster
+      SELECT p.*,
+             LEAD(p.timestamp) OVER (PARTITION BY p.mmsi ORDER BY p.timestamp, p.id) AS next_ts
+      FROM positions p, bounds b
+      WHERE p.timestamp > b.t0 - b.max_gap
+        AND p.timestamp <= b.t1
+    ),
+    seg AS (
+      SELECT pts.*,
+             GREATEST(EXTRACT(EPOCH FROM (
+               LEAST(COALESCE(next_ts, b.t1), pts.timestamp + b.max_gap, b.t1)
+               - GREATEST(pts.timestamp, b.t0)
+             )) / 3600.0, 0) AS dt_h
+      FROM pts, bounds b
+    )
+    SELECT
+      s.mmsi,
+      (ARRAY_AGG(s.name     ORDER BY s.timestamp DESC))[1] AS name,
+      (ARRAY_AGG(s.owner    ORDER BY s.timestamp DESC))[1] AS owner,
+      (ARRAY_AGG(s.flag     ORDER BY s.timestamp DESC))[1] AS flag,
+      (ARRAY_AGG(s.length_m ORDER BY s.timestamp DESC))[1] AS length_m,
+      ROUND(SUM(s.co2_kg_h  * s.dt_h)::numeric, 1)::float8 AS co2_kg_total,
+      ROUND(SUM(s.fuel_kg_h * s.dt_h)::numeric, 1)::float8 AS fuel_kg_total,
+      ROUND(SUM(s.nox_kg_h  * s.dt_h)::numeric, 1)::float8 AS nox_kg_total,
+      ROUND(SUM(s.sox_kg_h  * s.dt_h)::numeric, 2)::float8 AS sox_kg_total,
+      ROUND(SUM(s.dt_h)::numeric, 2)::float8               AS coverage_h,
+      $1::float8                                            AS period_h,
+      COUNT(*) FILTER (WHERE s.timestamp > (SELECT t0 FROM bounds))::int AS data_points,
+      MAX(s.timestamp) AS last_seen
+    FROM seg s
+    GROUP BY s.mmsi
+    HAVING SUM(s.dt_h) > 0
+    ORDER BY co2_kg_total DESC
+  `, [periodHours, MAX_GAP_HOURS]);
+  return result.rows;
+}
+
+// Cumulative emissions per yacht for a period (zeitgewichtet integriert)
 app.get('/api/emissions/summary', async (req, res) => {
   try {
     const { period = 'day' } = req.query;
-    const intervals = { day: '1 day', week: '7 days', month: '30 days' };
-    const interval = intervals[period] || '1 day';
-
-    const result = await pool.query(`
-      SELECT
-        mmsi, name, owner, flag, length_m,
-        ROUND(SUM(co2_kg_h)::numeric, 1)  AS co2_kg_total,
-        ROUND(SUM(fuel_kg_h)::numeric, 1) AS fuel_kg_total,
-        ROUND(SUM(nox_kg_h)::numeric, 1)  AS nox_kg_total,
-        COUNT(*) AS data_points,
-        MAX(timestamp) AS last_seen
-      FROM positions
-      WHERE timestamp > NOW() - INTERVAL '${interval}'
-      GROUP BY mmsi, name, owner, flag, length_m
-      ORDER BY co2_kg_total DESC
-    `);
-    res.json(result.rows);
+    const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 }[period] || 24;
+    res.json(await integrateEmissions(periodHours));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
