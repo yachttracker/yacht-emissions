@@ -30,29 +30,11 @@ const YACHTS = [
   { mmsi: '319032600', name: 'Musashi',      owner: 'Larry Ellison',              length: 88,  flag: '🇰🇾' },
 ];
 
-// ── EMISSION CALCULATION (IMO MEPC methodology) ──────────────────────────────
-function estimateMCR(lengthM) {
-  return Math.round(50 * Math.pow(lengthM, 1.2));
-}
-
-function calcHourlyEmissions(lengthM, speedKnots) {
-  const mcr = estimateMCR(lengthM);
-  const loadFactor = speedKnots > 1 ? 0.75 : 0.15;
-  const sfcMain = 185;
-  const sfcAux  = 210;
-  const auxKw   = mcr * 0.15;
-
-  const mainFuelKgH = (mcr * loadFactor * sfcMain) / 1e6 * 1000;
-  const auxFuelKgH  = (auxKw * 0.6 * sfcAux) / 1e6 * 1000;
-  const totalFuelKgH = mainFuelKgH + auxFuelKgH;
-
-  return {
-    co2_kg_h:  totalFuelKgH * 3.114,
-    nox_kg_h:  totalFuelKgH * 0.087,
-    sox_kg_h:  totalFuelKgH * 0.022,
-    fuel_kg_h: totalFuelKgH,
-  };
-}
+// ── EMISSION CALCULATION ─────────────────────────────────────────────────────
+// Parameter, Quellen und Status: siehe emissions.js und 02_methodik.md.
+// Optionale Felder je Yacht: mcr_kw (installierte Antriebsleistung), vmax_kn.
+// Solange sie fehlen, greifen gekennzeichnete Fallbacks (mcr_estimated = true).
+const { calcHourlyEmissions, CALC_VERSION } = require('./emissions');
 
 // ── DATABASE SETUP ───────────────────────────────────────────────────────────
 async function setupDB() {
@@ -78,6 +60,11 @@ async function setupDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_positions_mmsi ON positions(mmsi);
     CREATE INDEX IF NOT EXISTS idx_positions_timestamp ON positions(timestamp);
+    -- Nachvollziehbarkeit der gespeicherten Raten (seit 2026-10-15-v2)
+    ALTER TABLE positions ADD COLUMN IF NOT EXISTS me_load DOUBLE PRECISION;
+    ALTER TABLE positions ADD COLUMN IF NOT EXISTS mcr_kw DOUBLE PRECISION;
+    ALTER TABLE positions ADD COLUMN IF NOT EXISTS mcr_estimated BOOLEAN;
+    ALTER TABLE positions ADD COLUMN IF NOT EXISTS calc_version TEXT;
   `);
   console.log('Database ready');
 }
@@ -123,21 +110,23 @@ function connectAIS() {
         const heading = report.TrueHeading;
         const navStatus = report.NavigationalStatus;
 
-        const em = calcHourlyEmissions(yacht.length, sog);
+        const em = calcHourlyEmissions(yacht, sog, navStatus);
 
         await pool.query(`
           INSERT INTO positions
             (mmsi, name, owner, flag, length_m, latitude, longitude,
              speed_knots, heading, nav_status,
-             co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+             co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp,
+             me_load, mcr_kw, mcr_estimated, calc_version)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
         `, [
           yacht.mmsi, yacht.name, yacht.owner, yacht.flag, yacht.length,
           lat, lon, sog,
           heading || null,
           navStatus !== undefined ? String(navStatus) : null,
           em.co2_kg_h, em.nox_kg_h, em.sox_kg_h, em.fuel_kg_h,
-          meta.time_utc || new Date().toISOString()
+          meta.time_utc || new Date().toISOString(),
+          em.me_load, em.mcr_kw, em.mcr_estimated, em.calc_version
         ]);
 
         console.log(`[AIS] ${yacht.name}: ${lat.toFixed(3)}, ${lon.toFixed(3)} @ ${sog} kn`);
@@ -261,7 +250,7 @@ app.get('/api/emissions/summary', async (req, res) => {
 });
 
 // Health check
-app.get('/health', (_, res) => res.json({ status: 'ok' }));
+app.get('/health', (_, res) => res.json({ status: 'ok', calc_version: CALC_VERSION }));
 app.get('/debug/coverage-test/start', (req, res) => {
   runCoverageTest();
   res.json({ message: 'Coverage-Test gestartet (Rotterdam, 20 Sekunden)' });
