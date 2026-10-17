@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:ci@localhost:5432/ci
+      DATABASE_SSL: "false"
+      PORT: "3000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Abhängigkeiten installieren
+        run: npm install --no-audit --no-fund
+      - name: Syntaxprüfung
+        run: find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+      - name: Sicherheitsprüfung Abhängigkeiten (high/critical)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Server starten und /health prüfen
+        run: |
+          node server.js > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health; then echo; exit 0; fi
+            sleep 1
+          done
+          echo "Server antwortet nicht:"; cat server.log; exit 1
