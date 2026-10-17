@@ -43,7 +43,10 @@ async function fetchLive(mmsis, { extended = false, now = Date.now() } = {}) {
   const positions = mmsis.map(m => {
     const s = stateAt(m, now);
     return { mmsi: m, lat: s.lat, lon: s.lon, sog: s.sog, cog: 90, heading: null, nav_status: s.nav,
-             ts: new Date(now).toISOString(), extra: extended ? {} : null };
+             ts: new Date(now).toISOString(),
+             extra: extended ? { current_port: s.sog < 1 && s.lon < 8.5 ? 'Mock-Hafen' : null } : null,
+             static: extended ? { imo: null, gt: 1000 + (hash(m) % 4000), built: 2010 + (hash(m) % 15), draught: 4,
+                                  length_m: 60 + (hash(m) % 80), beam_m: 12, raw: {} } : null };
   });
   const charged = positions.length * (extended ? COSTS.live_extended : COSTS.live_simple);
   return { positions, charged, calls: [{ ids: mmsis.length, charged, status: 200 }] };

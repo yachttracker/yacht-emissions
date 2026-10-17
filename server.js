@@ -27,6 +27,7 @@ const { loadConfig } = require('./lib/config');
 const { getProvider } = require('./providers');
 const planner = require('./lib/planner');
 const credits = require('./lib/credits');
+const { computeSchedule } = require('./lib/schedule');
 const CFG = loadConfig();
 
 // ── EMISSION CALCULATION ─────────────────────────────────────────────────────
@@ -299,7 +300,8 @@ app.get('/api/status', async (_, res) => {
              MAX(updated_at) AS last_update
         FROM vessel_days WHERE dataset = $1 AND day > (NOW() AT TIME ZONE 'UTC')::date - 30`, [CFG.dataset]);
     res.json({ provider: CFG.provider, dataset: CFG.dataset, dry_run: CFG.dryRun,
-               poll_hours_utc: CFG.pollHoursUtc, history_hour_utc: CFG.historyHourUtc,
+               schedule: provider ? computeSchedule(CFG, YACHTS.length, provider.COSTS) : null,
+               history_hour_utc: CFG.historyHourUtc, history_timegroup_min: CFG.timegroupMin,
                credits: st, last_30_days: days.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -354,16 +356,20 @@ async function runJob(kind, opts = {}) {
 
 function startScheduler() {
   if (CFG.provider === 'none') { console.log('[ABRUF] AIS_PROVIDER=none – kein Zeitplan'); return; }
-  getProvider();   // wirft bei Fehlkonfiguration sofort
-  const hours = CFG.pollHoursUtc.join(',');
+  const provider = getProvider();   // wirft bei Fehlkonfiguration sofort
+  const sch = computeSchedule(CFG, YACHTS.length, provider.COSTS);
+  if (sch.over_budget) console.warn(`[ABRUF] WARNUNG: geplant ${sch.projected_month_31d} Credits > Budget ${CFG.monthBudget}`);
+  const hours = sch.hours_utc.join(',');
   cron.schedule(`7 ${hours} * * *`, () => {
-    const extended = CFG.liveExtended && new Date().getUTCHours() === CFG.extendedHourUtc;
+    const extended = CFG.liveExtended && new Date().getUTCHours() === sch.extended_hour_utc;
     runJob('poll', { extended }).catch(e => console.error('[ABRUF] poll', e.message));
   }, { timezone: 'Etc/UTC' });
   cron.schedule(`23 ${CFG.historyHourUtc} * * *`, () => {
     runJob('history').catch(e => console.error('[ABRUF] history', e.message));
   }, { timezone: 'Etc/UTC' });
-  console.log(`[ABRUF] ${CFG.provider} (${CFG.dataset}${CFG.dryRun ? ', dry-run' : ''}): Live ${hours} UTC, Historie ${CFG.historyHourUtc}:23 UTC`);
+  console.log(`[ABRUF] ${CFG.provider} (${CFG.dataset}${CFG.dryRun ? ', dry-run' : ''}): ${YACHTS.length} Yachten, ` +
+    `Live ${sch.polls_per_day}×/Tag (${hours} UTC, extended ${sch.extended_hour_utc}), Historie ${CFG.historyHourUtc}:23 UTC ` +
+    `im ${CFG.timegroupMin}-min-Raster, Plan ${sch.projected_month_31d} Credits/31 Tage (${sch.share_pct} %)`);
 }
 
 // ── START ────────────────────────────────────────────────────────────────────

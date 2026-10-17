@@ -29,11 +29,17 @@ function num(v) {
   return v === null || v === undefined || v === '' || Number.isNaN(n) ? null : n;
 }
 
-async function call(path, params) {
+// Rate-Limit: 2.000 Aufrufe/min, Trial 90/min (belegt: api.myshiptracking.com).
+// Bei 429 bis zu 3× mit 20/40/60 s Pause wiederholen (429 kostet keine Credits, Annahme).
+async function call(path, params, attempt = 1) {
   const key = process.env.MST_API_KEY;
   if (!key) throw new Error('MST_API_KEY nicht gesetzt');
   const url = `${BASE}${path}?${new URLSearchParams(params)}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' } });
+  if (res.status === 429 && attempt <= 3) {
+    await new Promise(r => setTimeout(r, 20000 * attempt));
+    return call(path, params, attempt + 1);
+  }
   const charged = Number(res.headers.get('x-credit-charged')) || 0;
   let body = null;
   try { body = await res.json(); } catch { body = null; }
@@ -63,8 +69,16 @@ async function fetchLive(mmsis, { extended = false } = {}) {
         ts: parseUtc(v.received),
         extra: extended ? {
           distance_covered: num(v.distance_covered), max_sog: num(v.max_sog), avg_sog: num(v.avg_sog),
-          last_port_dep_utc: parseUtc(v.last_port_dep_utc), current_port: v.current_port ?? null,
+          last_port_dep_utc: parseUtc(v.last_port_dep_utc), current_port: v.current_port || null,
           current_port_arr_utc: parseUtc(v.current_port_arr_utc),
+        } : null,
+        static: extended ? {
+          imo: v.imo ? String(v.imo) : null, callsign: v.callsign ?? null,
+          vessel_type: v.vessel_type ?? null, ais_type: v.ais_type ?? null, flag: v.flag ?? null,
+          gt: num(v.gt), dwt: num(v.dwt), built: num(v.built), draught: num(v.draught),
+          length_m: num(v.size_a) !== null && num(v.size_b) !== null ? num(v.size_a) + num(v.size_b) : null,
+          beam_m: num(v.size_c) !== null && num(v.size_d) !== null ? num(v.size_c) + num(v.size_d) : null,
+          raw: v,
         } : null,
       });
     }
