@@ -17,18 +17,17 @@ const pool = new Pool({
 });
 
 // ── YACHT LIST (MMSI + static data) ─────────────────────────────────────────
-const YACHTS = [
-  { mmsi: '319225400', name: 'Koru',         owner: 'Jeff Bezos',                 length: 127, flag: '🇰🇾' },
-  { mmsi: '538071886', name: 'Carinthia VII', owner: 'Porsche/Piëch-Familie',     length: 75,  flag: '🇲🇭' },
-  { mmsi: '319318200', name: 'My Deep Blue', owner: 'unbestätigt',                 length: 134, flag: '🇰🇾' },
-  { mmsi: '538072122', name: 'Launchpad',    owner: 'Mark Zuckerberg',            length: 118, flag: '🇲🇭' },
-  { mmsi: '319205400', name: 'Boardwalk',    owner: 'Tilman Fertitta',            length: 77,  flag: '🇰🇾' },
-  { mmsi: '538071476', name: 'Kismet',       owner: 'Shahid Khan',                length: 122, flag: '🇲🇭' },
-  { mmsi: '319076700', name: 'Symphony',     owner: 'Bernard Arnault',            length: 101, flag: '🇰🇾' },
-  { mmsi: '319306800', name: 'Moonrise',     owner: 'Undisclosed',                length: 100, flag: '🇰🇾' },
-  { mmsi: '311001556', name: 'Emerald Kaia', owner: 'Emerald Cruises (kommerziell)', length: 142, flag: '🇧🇸' },
-  { mmsi: '319032600', name: 'Musashi',      owner: 'Larry Ellison',              length: 88,  flag: '🇰🇾' },
-];
+// Ausgelagert nach fleet.js (gemeinsam mit der Abruflogik genutzt).
+const { YACHTS } = require('./fleet');
+
+// ── ABRUFLOGIK ───────────────────────────────────────────────────────────────
+const cron = require('node-cron');
+const { migrate } = require('./lib/schema');
+const { loadConfig } = require('./lib/config');
+const { getProvider } = require('./providers');
+const planner = require('./lib/planner');
+const credits = require('./lib/credits');
+const CFG = loadConfig();
 
 // ── EMISSION CALCULATION ─────────────────────────────────────────────────────
 // Parameter, Quellen und Status: siehe emissions.js und 02_methodik.md.
@@ -66,6 +65,7 @@ async function setupDB() {
     ALTER TABLE positions ADD COLUMN IF NOT EXISTS mcr_estimated BOOLEAN;
     ALTER TABLE positions ADD COLUMN IF NOT EXISTS calc_version TEXT;
   `);
+  await migrate(pool);
   console.log('Database ready');
 }
 
@@ -154,8 +154,9 @@ app.get('/api/yachts/latest', async (req, res) => {
     const result = await pool.query(`
       SELECT DISTINCT ON (mmsi) *
       FROM positions
+      WHERE dataset = $1
       ORDER BY mmsi, timestamp DESC
-    `);
+    `, [CFG.dataset]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -171,13 +172,19 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
     const interval = intervals[period] || '1 day';
 
     const result = await pool.query(`
-      SELECT timestamp, latitude, longitude, speed_knots,
-             co2_kg_h, fuel_kg_h
-      FROM positions
-      WHERE mmsi = $1
-        AND timestamp > NOW() - INTERVAL '${interval}'
-      ORDER BY timestamp ASC
-    `, [mmsi]);
+      SELECT p.timestamp, p.latitude, p.longitude, p.speed_knots,
+             p.co2_kg_h, p.fuel_kg_h, p.source
+      FROM positions p
+      WHERE p.mmsi = $1 AND p.dataset = $2
+        AND p.timestamp > NOW() - INTERVAL '${interval}'
+        -- Tage mit Historie: nur Historienpunkte, Live-Punkte ausblenden
+        AND (p.source = 'history' OR NOT EXISTS (
+              SELECT 1 FROM vessel_days v
+               WHERE v.dataset = p.dataset AND v.mmsi = p.mmsi
+                 AND v.day = (p.timestamp AT TIME ZONE 'UTC')::date
+                 AND v.history_status = 'done'))
+      ORDER BY p.timestamp ASC
+    `, [mmsi, CFG.dataset]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -191,14 +198,20 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
 // ausgewiesen (coverage_h). Annahme: größtes geplantes Polling-Intervall 6 h
 // (unbewegte Yachten) + 1 h Toleranz für verspätete Meldungen.
 const MAX_GAP_HOURS = Number(process.env.MAX_GAP_HOURS) || 7;
+// Historie im 5-min-Raster: längere Lücke = echte Lücke (AIS aus / keine Abdeckung).
+// Annahme: 1 h (Recherche 17.10.2026, Abschn. 6).
+const MAX_GAP_HOURS_HISTORY = Number(process.env.MAX_GAP_HOURS_HISTORY) || 1;
 
-// Menge = Σ Rate_i × Dauer_i, Dauer_i = [max(t_i, Fensterbeginn), min(t_(i+1), t_i + MAX_GAP, jetzt)]
+// Menge = Σ Rate_i × Dauer_i, Dauer_i = [max(t_i, Fensterbeginn), min(t_(i+1), t_i + MAX_GAP(source), jetzt)]
+// Je (Yacht, UTC-Tag) gilt: liegt Historie vor (vessel_days.history_status = 'done'),
+// zählen nur Historienpunkte; sonst die Live-Punkte.
 async function integrateEmissions(periodHours) {
   const result = await pool.query(`
     WITH bounds AS (
       SELECT NOW() - make_interval(hours => $1) AS t0,
              NOW()                              AS t1,
-             make_interval(hours => $2)          AS max_gap
+             make_interval(hours => $2)          AS max_gap,
+             make_interval(hours => $3)          AS max_gap_hist
     ),
     pts AS (
       -- Meldungen kurz vor dem Fenster einbeziehen: ihre Rate gilt ggf. noch im Fenster
@@ -207,11 +220,20 @@ async function integrateEmissions(periodHours) {
       FROM positions p, bounds b
       WHERE p.timestamp > b.t0 - b.max_gap
         AND p.timestamp <= b.t1
+        AND p.dataset = $4
+        AND p.source IN ('live', 'history')
+        AND (p.source = 'history' OR NOT EXISTS (
+              SELECT 1 FROM vessel_days v
+               WHERE v.dataset = p.dataset AND v.mmsi = p.mmsi
+                 AND v.day = (p.timestamp AT TIME ZONE 'UTC')::date
+                 AND v.history_status = 'done'))
     ),
     seg AS (
       SELECT pts.*,
              GREATEST(EXTRACT(EPOCH FROM (
-               LEAST(COALESCE(next_ts, b.t1), pts.timestamp + b.max_gap, b.t1)
+               LEAST(COALESCE(next_ts, b.t1),
+                     pts.timestamp + CASE WHEN pts.source = 'history' THEN b.max_gap_hist ELSE b.max_gap END,
+                     b.t1)
                - GREATEST(pts.timestamp, b.t0)
              )) / 3600.0, 0) AS dt_h
       FROM pts, bounds b
@@ -229,12 +251,13 @@ async function integrateEmissions(periodHours) {
       ROUND(SUM(s.dt_h)::numeric, 2)::float8               AS coverage_h,
       $1::float8                                            AS period_h,
       COUNT(*) FILTER (WHERE s.timestamp > (SELECT t0 FROM bounds))::int AS data_points,
+      ROUND(SUM(s.dt_h) FILTER (WHERE s.source = 'history')::numeric, 2)::float8 AS coverage_history_h,
       MAX(s.timestamp) AS last_seen
     FROM seg s
     GROUP BY s.mmsi
     HAVING SUM(s.dt_h) > 0
     ORDER BY co2_kg_total DESC
-  `, [periodHours, MAX_GAP_HOURS]);
+  `, [periodHours, MAX_GAP_HOURS, MAX_GAP_HOURS_HISTORY, CFG.dataset]);
   return result.rows;
 }
 
@@ -260,11 +283,107 @@ app.get('/debug/coverage-test/status', (req, res) => {
   res.json(getCoverageResult());
 });
 
+// ── ABRUF-STATUS (öffentlich, nur lesend) ────────────────────────────────────
+app.get('/api/status', async (_, res) => {
+  try {
+    let provider = null;
+    try { provider = getProvider(); } catch (e) { /* Konfigurationsfehler unten melden */ }
+    const st = provider ? await credits.status(pool, CFG, provider.name) : null;
+    const days = await pool.query(`
+      SELECT COUNT(*)::int AS yacht_days,
+             COUNT(*) FILTER (WHERE history_status = 'done')::int  AS history_done,
+             COUNT(*) FILTER (WHERE moved)::int                    AS detected_moved,
+             -- Kontrolle der Erkennung an Tagen mit Historie
+             COUNT(*) FILTER (WHERE history_moved AND moved)::int      AS hist_moved_detected,
+             COUNT(*) FILTER (WHERE history_moved AND NOT moved)::int  AS hist_moved_missed,
+             MAX(updated_at) AS last_update
+        FROM vessel_days WHERE dataset = $1 AND day > (NOW() AT TIME ZONE 'UTC')::date - 30`, [CFG.dataset]);
+    res.json({ provider: CFG.provider, dataset: CFG.dataset, dry_run: CFG.dryRun,
+               poll_hours_utc: CFG.pollHoursUtc, history_hour_utc: CFG.historyHourUtc,
+               credits: st, last_30_days: days.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN (nur mit ADMIN_TOKEN; ohne Variable deaktiviert) ───────────────────
+function admin(req, res, next) {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token || req.get('x-admin-token') !== token) return res.status(403).json({ error: 'forbidden' });
+  next();
+}
+// Plan ansehen, ohne Credits auszugeben: /admin/plan?lookback=14&backfill=true
+app.get('/admin/plan', admin, async (req, res) => {
+  try {
+    const provider = getProvider();
+    if (!provider) return res.status(400).json({ error: 'AIS_PROVIDER=none' });
+    const plan = await planner.planHistory(pool, provider, CFG, {
+      lookbackDays: Number(req.query.lookback) || CFG.lookbackDays, backfill: req.query.backfill === 'true' });
+    res.json({ ...plan, skipped: plan.skipped.length, selected: plan.selected.map(c => `${c.day} ${c.name} P${c.prio} (${c.why})`) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/admin/poll', admin, async (_, res) => {
+  try { res.json(await runJob('poll')); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Historie jetzt abrufen; ?lookback=14&backfill=true für den Startbestand
+app.post('/admin/history', admin, async (req, res) => {
+  try {
+    res.json(await runJob('history', { lookbackDays: Number(req.query.lookback) || CFG.lookbackDays,
+                                       backfill: req.query.backfill === 'true' }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── ZEITPLAN ─────────────────────────────────────────────────────────────────
+let jobRunning = false;
+async function runJob(kind, opts = {}) {
+  const provider = getProvider();
+  if (!provider) return { skipped: 'AIS_PROVIDER=none' };
+  if (!CFG.dryRun && (!CFG.monthBudget || !CFG.dailyCap)) {
+    throw new Error('CREDIT_MONTH_BUDGET und CREDIT_DAILY_CAP müssen gesetzt sein');
+  }
+  if (jobRunning) return { skipped: 'anderer Abruf läuft' };
+  jobRunning = true;
+  try {
+    const r = kind === 'poll'
+      ? await planner.pollLive(pool, provider, CFG, { extended: opts.extended })
+      : await planner.runHistory(pool, provider, CFG, opts);
+    console.log(`[ABRUF] ${kind}`, JSON.stringify(r).slice(0, 500));
+    return r;
+  } finally { jobRunning = false; }
+}
+
+function startScheduler() {
+  if (CFG.provider === 'none') { console.log('[ABRUF] AIS_PROVIDER=none – kein Zeitplan'); return; }
+  getProvider();   // wirft bei Fehlkonfiguration sofort
+  const hours = CFG.pollHoursUtc.join(',');
+  cron.schedule(`7 ${hours} * * *`, () => {
+    const extended = CFG.liveExtended && new Date().getUTCHours() === CFG.extendedHourUtc;
+    runJob('poll', { extended }).catch(e => console.error('[ABRUF] poll', e.message));
+  }, { timezone: 'Etc/UTC' });
+  cron.schedule(`23 ${CFG.historyHourUtc} * * *`, () => {
+    runJob('history').catch(e => console.error('[ABRUF] history', e.message));
+  }, { timezone: 'Etc/UTC' });
+  console.log(`[ABRUF] ${CFG.provider} (${CFG.dataset}${CFG.dryRun ? ', dry-run' : ''}): Live ${hours} UTC, Historie ${CFG.historyHourUtc}:23 UTC`);
+}
+
 // ── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 
-setupDB().then(() => {
+// DB beim Start bis zu 10× versuchen statt sofort abzustürzen (bekannter Mangel)
+async function setupWithRetry(tries = 10) {
+  for (let i = 1; ; i++) {
+    try { return await setupDB(); }
+    catch (e) {
+      if (i >= tries) throw e;
+      console.error(`[DB] nicht erreichbar (${e.message}), neuer Versuch ${i + 1}/${tries} in 10 s`);
+      await new Promise(r => setTimeout(r, 10000));
+    }
+  }
+}
+
+setupWithRetry().then(() => {
  // connectAIS();
+  startScheduler();
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });
   
