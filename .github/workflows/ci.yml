@@ -45,3 +45,5 @@ jobs:
             sleep 1
           done
           echo "Server antwortet nicht:"; cat server.log; exit 1
+      - name: API-Tests (Zeitfenster, Maskierung, Admin-Schutz)
+        run: node --test --test-reporter=spec test/api.test.js

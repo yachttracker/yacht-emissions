@@ -1,12 +1,15 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const WebSocket = require('ws');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+// Railway leitet Anfragen über einen Proxy weiter → echte Client-IP aus X-Forwarded-For
+// (Annahme: genau ein Proxy davor; nötig für das Rate-Limit je IP)
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
 // Database connection
 const pool = new Pool({
@@ -34,6 +37,26 @@ const CFG = loadConfig();
 // Optionale Felder je Yacht: mcr_kw (installierte Antriebsleistung), vmax_kn.
 // Solange sie fehlen, greifen gekennzeichnete Fallbacks (mcr_estimated = true).
 const { calcHourlyEmissions, CALC_VERSION } = require('./emissions');
+
+// ── DASHBOARD: Zeitfenster, Eigentümer, Schutz ───────────────────────────────
+const { resolveWindow, windowKey, WindowError } = require('./lib/periods');
+const ownersLib = require('./lib/owners');
+const { createAdminGuard, createLimiter, rateLimit, securityHeaders } = require('./lib/security');
+const { createDashboard } = require('./lib/dashboard');
+const { mountAdmin } = require('./lib/admin');
+const ownerStore = ownersLib.createOwnerStore(pool);
+const dash = createDashboard({ pool, CFG, YACHTS });
+const requireAdmin = createAdminGuard();
+// Öffentliche API: großzügiges Limit je IP (Schutz vor Dauerabfragen, Annahme 240/min)
+const apiLimiter = rateLimit(createLimiter({ windowMs: 60000, max: Number(process.env.API_RATE_PER_MIN) || 240 }));
+
+app.use(securityHeaders);
+app.use(cors());
+app.use(express.json({ limit: '20kb' }));
+// Statisches Frontend aus public/ (index.html, admin/, js/, css/, vendor/)
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '5m' }));
+// Jede öffentliche API-Antwort läuft durch die zentrale Eigentümer-Maskierung
+app.use('/api', apiLimiter, ownersLib.publicApi(ownerStore));
 
 // ── DATABASE SETUP ───────────────────────────────────────────────────────────
 async function setupDB() {
@@ -66,6 +89,7 @@ async function setupDB() {
     ALTER TABLE positions ADD COLUMN IF NOT EXISTS calc_version TEXT;
   `);
   await migrate(pool);
+  await ownersLib.migrateOwners(pool);
   console.log('Database ready');
 }
 
@@ -149,10 +173,14 @@ function connectAIS() {
 // ── API ENDPOINTS ────────────────────────────────────────────────────────────
 
 // Latest position + emissions for all yachts
+// Spalten ausdrücklich ohne positions.owner (Eigentümer kommen nur aus vessel_owner, maskiert)
+const LATEST_COLUMNS = `id, mmsi, name, flag, length_m, latitude, longitude, speed_knots, heading, cog, nav_status,
+  co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp, created_at, me_load, mcr_kw, mcr_estimated,
+  calc_version, source, dataset, observed, current_port`;
 app.get('/api/yachts/latest', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT DISTINCT ON (mmsi) *
+      SELECT DISTINCT ON (mmsi) ${LATEST_COLUMNS}
       FROM positions
       WHERE dataset = $1
       ORDER BY mmsi, timestamp DESC
@@ -163,33 +191,36 @@ app.get('/api/yachts/latest', async (req, res) => {
   }
 });
 
-// Historical data for a yacht (day/week/month)
+// Historical data for a yacht
+// Bisherige Aufrufe (?period=day|week|month) liefern unverändert ein Array.
+// Neu: period=year, mode=rolling|calendar, from/to (siehe lib/periods.js);
+// meta=1 → { meta, points }; max_points=N → zeitliche Buckets für die Anzeige.
 app.get('/api/yacht/:mmsi/history', async (req, res) => {
   try {
     const { mmsi } = req.params;
-    const { period = 'day' } = req.query;
-    const intervals = { day: '1 day', week: '7 days', month: '30 days' };
-    const interval = intervals[period] || '1 day';
-
-    const result = await pool.query(`
-      SELECT p.timestamp, p.latitude, p.longitude, p.speed_knots,
-             p.co2_kg_h, p.fuel_kg_h, p.source
-      FROM positions p
-      WHERE p.mmsi = $1 AND p.dataset = $2
-        AND p.timestamp > NOW() - INTERVAL '${interval}'
-        -- Tage mit Historie: nur Historienpunkte, Live-Punkte ausblenden
-        AND (p.source = 'history' OR NOT EXISTS (
-              SELECT 1 FROM vessel_days v
-               WHERE v.dataset = p.dataset AND v.mmsi = p.mmsi
-                 AND v.day = (p.timestamp AT TIME ZONE 'UTC')::date
-                 AND v.history_status = 'done'))
-      ORDER BY p.timestamp ASC
-    `, [mmsi, CFG.dataset]);
-    res.json(result.rows);
+    if (!/^\d{9}$/.test(mmsi)) return res.status(400).json({ error: 'mmsi must have 9 digits' });
+    const win = resolveWindow(req.query);
+    const maxPoints = Math.min(Math.max(Number(req.query.max_points) || 0, 0), 5000);
+    const h = await dash.history(mmsi, win, maxPoints);
+    if (!wantsMeta(req)) return res.json(h.points);
+    const range = await dash.yachtRange(mmsi);
+    res.json({
+      meta: { mmsi, ...windowMeta(win), ...range, points_raw: h.points_raw,
+              downsampled: h.bucket_s > 0, bucket_s: h.bucket_s },
+      points: h.points,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
+
+const wantsMeta = (req) => req.query.meta === '1' || req.query.meta === 'true';
+const windowMeta = (win) => ({ window_from: win.t0.toISOString(), window_to: win.t1.toISOString(),
+  period: win.period, mode: win.mode, period_h: win.period_h });
+function sendError(res, err) {
+  if (err instanceof WindowError) return res.status(400).json({ error: err.message });
+  res.status(500).json({ error: err.message });
+}
 
 // ── ZEITINTEGRATION ──────────────────────────────────────────────────────────
 // Jede Meldung liefert eine Rate (kg/h). Diese Rate gilt ab ihrem Zeitstempel
@@ -205,11 +236,13 @@ const MAX_GAP_HOURS_HISTORY = Number(process.env.MAX_GAP_HOURS_HISTORY) || 1;
 // Menge = Σ Rate_i × Dauer_i, Dauer_i = [max(t_i, Fensterbeginn), min(t_(i+1), t_i + MAX_GAP(source), jetzt)]
 // Je (Yacht, UTC-Tag) gilt: liegt Historie vor (vessel_days.history_status = 'done'),
 // zählen nur Historienpunkte; sonst die Live-Punkte.
-async function integrateEmissions(periodHours) {
+// Fenster [t0, t1] beliebig (rollierend, Kalender, frei); Rechenlogik unverändert.
+// Früher: t0 = NOW() − Periode, t1 = NOW(). Eigentümer kommen nicht mehr aus positions.
+async function integrateEmissions(win) {
   const result = await pool.query(`
     WITH bounds AS (
-      SELECT NOW() - make_interval(hours => $1) AS t0,
-             NOW()                              AS t1,
+      SELECT $1::timestamptz                     AS t0,
+             $5::timestamptz                     AS t1,
              make_interval(hours => $2)          AS max_gap,
              make_interval(hours => $3)          AS max_gap_hist
     ),
@@ -241,7 +274,6 @@ async function integrateEmissions(periodHours) {
     SELECT
       s.mmsi,
       (ARRAY_AGG(s.name     ORDER BY s.timestamp DESC))[1] AS name,
-      (ARRAY_AGG(s.owner    ORDER BY s.timestamp DESC))[1] AS owner,
       (ARRAY_AGG(s.flag     ORDER BY s.timestamp DESC))[1] AS flag,
       (ARRAY_AGG(s.length_m ORDER BY s.timestamp DESC))[1] AS length_m,
       ROUND(SUM(s.co2_kg_h  * s.dt_h)::numeric, 1)::float8 AS co2_kg_total,
@@ -249,7 +281,7 @@ async function integrateEmissions(periodHours) {
       ROUND(SUM(s.nox_kg_h  * s.dt_h)::numeric, 1)::float8 AS nox_kg_total,
       ROUND(SUM(s.sox_kg_h  * s.dt_h)::numeric, 2)::float8 AS sox_kg_total,
       ROUND(SUM(s.dt_h)::numeric, 2)::float8               AS coverage_h,
-      $1::float8                                            AS period_h,
+      $6::float8                                            AS period_h,
       COUNT(*) FILTER (WHERE s.timestamp > (SELECT t0 FROM bounds))::int AS data_points,
       ROUND(SUM(s.dt_h) FILTER (WHERE s.source = 'history')::numeric, 2)::float8 AS coverage_history_h,
       MAX(s.timestamp) AS last_seen
@@ -257,18 +289,45 @@ async function integrateEmissions(periodHours) {
     GROUP BY s.mmsi
     HAVING SUM(s.dt_h) > 0
     ORDER BY co2_kg_total DESC
-  `, [periodHours, MAX_GAP_HOURS, MAX_GAP_HOURS_HISTORY, CFG.dataset]);
+  `, [win.t0.toISOString(), MAX_GAP_HOURS, MAX_GAP_HOURS_HISTORY, CFG.dataset, win.t1.toISOString(), win.period_h]);
   return result.rows;
 }
 
 // Cumulative emissions per yacht for a period (zeitgewichtet integriert)
+// Bisherige Aufrufe (?period=day|week|month) liefern unverändert ein Array.
+// Neu: period=year, mode, from/to; meta=1 → { meta, rows } mit Datenbereich.
+// Ergebnisse 60 s zwischengespeichert (Daten kommen nur wenige Male am Tag hinzu).
 app.get('/api/emissions/summary', async (req, res) => {
   try {
-    const { period = 'day' } = req.query;
-    const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 }[period] || 24;
-    res.json(await integrateEmissions(periodHours));
+    const fresh = resolveWindow(req.query);      // prüft Parameter auch bei Cache-Treffer
+    const { win, rows } = await dash.cache(`sum:${CFG.dataset}:${windowKey(req.query)}`,
+      async () => ({ win: fresh, rows: await integrateEmissions(fresh) }));
+    if (!wantsMeta(req)) return res.json(rows);
+    const range = await dash.dataRange();
+    res.json({
+      meta: { ...windowMeta(win), ...range, dataset: CFG.dataset, calc_version: CALC_VERSION,
+              yachts_tracked: YACHTS.length, yachts_with_data: rows.length,
+              max_gap_hours: MAX_GAP_HOURS, max_gap_hours_history: MAX_GAP_HOURS_HISTORY,
+              visibility: req.ownerView },
+      rows: rows.map(r => ({ ...r, flag_code: dash.flagCode(r.flag), category: 'yacht' })),
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
+  }
+});
+
+// Flotte mit Stammdaten (Belegstatus je Feld) und Datenbereich – Grundlage für Leerzustand,
+// Filter und Detailansicht. Eigentümerfelder setzt die Maskierung.
+app.get('/api/fleet', async (req, res) => {
+  try {
+    const [yachts, range] = await Promise.all([dash.fleet(), dash.dataRange()]);
+    res.json({
+      meta: { ...range, dataset: CFG.dataset, provider: CFG.provider, calc_version: CALC_VERSION,
+              yachts_tracked: YACHTS.length, visibility: req.ownerView, server_time: new Date().toISOString() },
+      yachts,
+    });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -300,13 +359,12 @@ app.get('/api/status', async (_, res) => {
 });
 
 // ── ADMIN (nur mit ADMIN_TOKEN; ohne Variable deaktiviert) ───────────────────
-function admin(req, res, next) {
-  const token = process.env.ADMIN_TOKEN;
-  if (!token || req.get('x-admin-token') !== token) return res.status(403).json({ error: 'forbidden' });
-  next();
-}
+// Schutz: konstanter Zeitvergleich, Fehlversuche je IP begrenzt (lib/security.js).
+// Admin-Seite: public/admin/ ; Admin-API: /admin/api/* (lib/admin.js)
+mountAdmin(app, { pool, store: ownerStore, YACHTS, requireAdmin, CFG });
+
 // Plan ansehen, ohne Credits auszugeben: /admin/plan?lookback=14&backfill=true
-app.get('/admin/plan', admin, async (req, res) => {
+app.get('/admin/plan', requireAdmin, async (req, res) => {
   try {
     const provider = getProvider();
     if (!provider) return res.status(400).json({ error: 'AIS_PROVIDER=none' });
@@ -315,11 +373,11 @@ app.get('/admin/plan', admin, async (req, res) => {
     res.json({ ...plan, skipped: plan.skipped.length, selected: plan.selected.map(c => `${c.day} ${c.name} P${c.prio} (${c.why})`) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.post('/admin/poll', admin, async (_, res) => {
+app.post('/admin/poll', requireAdmin, async (_, res) => {
   try { res.json(await runJob('poll')); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Historie jetzt abrufen; ?lookback=14&backfill=true für den Startbestand
-app.post('/admin/history', admin, async (req, res) => {
+app.post('/admin/history', requireAdmin, async (req, res) => {
   try {
     res.json(await runJob('history', { lookbackDays: Number(req.query.lookback) || CFG.lookbackDays,
                                        backfill: req.query.backfill === 'true' }));
@@ -378,8 +436,13 @@ async function setupWithRetry(tries = 10) {
   }
 }
 
+// Unbekannte API-Pfade: JSON statt HTML
+app.use(['/api', '/admin/api'], (req, res) => res.status(404).json({ error: 'not found' }));
+
 setupWithRetry().then(() => {
  // connectAIS();
+  if (!process.env.ADMIN_TOKEN) console.log('[ADMIN] ADMIN_TOKEN nicht gesetzt – Admin-Seite und Admin-API deaktiviert');
+  else if (process.env.ADMIN_TOKEN.length < 24) console.warn('[ADMIN] ADMIN_TOKEN kürzer als 24 Zeichen – bitte länger wählen');
   startScheduler();
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });

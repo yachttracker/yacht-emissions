@@ -1,0 +1,27 @@
+{
+  "_note": "Fiktive Testdaten für den lokalen Dev-Server. Keine echten Yachten, Eigentümer oder Positionen.",
+  "yachts": [
+    { "mmsi": "900000001", "name": "Mock Yacht A", "length": 142, "flag": "KY", "region": "riviera",  "owner": { "name": "Demo Person Alpha",   "status": "sourced",    "source_url": "https://example.org/demo-source/alpha" } },
+    { "mmsi": "900000002", "name": "Mock Yacht B", "length": 128, "flag": "MH", "region": "aegean",   "owner": { "name": "Demo Person Bravo",   "status": "sourced",    "source_url": "https://example.org/demo-source/bravo" } },
+    { "mmsi": "900000003", "name": "Mock Yacht C", "length": 117, "flag": "KY", "region": "caribbean","owner": { "name": "Demo Person Charlie", "status": "unverified" } },
+    { "mmsi": "900000004", "name": "Mock Yacht D", "length": 111, "flag": "BS", "region": "gulf",     "owner": { "name": "Demo Person Delta",   "status": "sourced",    "source_url": "https://example.org/demo-source/delta" } },
+    { "mmsi": "900000005", "name": "Mock Yacht E", "length": 104, "flag": "MT", "region": "tyrrhenian","owner": { "name": "Demo Person Alpha",  "status": "sourced",    "source_url": "https://example.org/demo-source/alpha-2" } },
+    { "mmsi": "900000006", "name": "Mock Yacht F", "length": 97,  "flag": "KY", "region": "balearic", "owner": null },
+    { "mmsi": "900000007", "name": "Mock Yacht G", "length": 92,  "flag": "MH", "region": "adriatic", "owner": { "name": "Demo Person Echo",    "status": "sourced",    "source_url": "https://example.org/demo-source/echo" } },
+    { "mmsi": "900000008", "name": "Mock Yacht H", "length": 88,  "flag": "KY", "region": "florida",  "owner": { "name": "Demo Person Foxtrot", "status": "unverified" } },
+    { "mmsi": "900000009", "name": "Mock Yacht I", "length": 83,  "flag": "GB", "region": "riviera",  "owner": { "name": "Demo Person Golf",    "status": "sourced",    "source_url": "https://example.org/demo-source/golf" }, "coverage": 0.3 },
+    { "mmsi": "900000010", "name": "Mock Yacht J", "length": 78,  "flag": "MT", "region": "aegean",   "owner": null, "stop_days_ago": 45 },
+    { "mmsi": "900000011", "name": "Mock Yacht K", "length": 74,  "flag": "BS", "region": "caribbean","owner": { "name": "Demo Person Hotel",   "status": "sourced",    "source_url": "https://example.org/demo-source/hotel" } },
+    { "mmsi": "900000012", "name": "Mock Yacht L", "length": 70,  "flag": "KY", "region": "gulf",     "owner": null, "no_data": true }
+  ],
+  "regions": {
+    "riviera":    [[43.735, 7.425], [43.575, 7.13], [43.27, 6.64], [43.55, 7.02]],
+    "aegean":     [[37.445, 25.33], [36.42, 25.43], [37.03, 27.43], [37.94, 23.64]],
+    "caribbean":  [[17.9, -62.85], [18.08, -63.05], [17.12, -61.85], [18.34, -64.93]],
+    "gulf":       [[25.09, 55.14], [24.47, 54.37], [25.29, 51.53], [26.23, 50.6]],
+    "tyrrhenian": [[40.55, 14.24], [40.83, 14.25], [41.13, 9.53], [38.12, 13.37]],
+    "balearic":   [[39.56, 2.63], [38.91, 1.44], [39.89, 3.08], [41.38, 2.18]],
+    "adriatic":   [[42.64, 18.11], [43.51, 16.44], [42.42, 18.77], [44.12, 15.23]],
+    "florida":    [[26.1, -80.12], [25.77, -80.13], [24.55, -81.8], [26.71, -80.05]]
+  }
+}

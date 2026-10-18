@@ -1,18 +1,21 @@
 // ── FLOTTE (MMSI + Stammdaten) ──────────────────────────────────────────────
-// Unverändert aus server.js (Stand 5c47ffc) ausgelagert, damit Server und
-// Abruflogik dieselbe Liste nutzen. Eigentümer und Längen sind laut
-// 00_projektstand noch neu zu belegen (ungeklärt).
+// Gemeinsam genutzt von Server und Abruflogik. Längen sind ungeprüfte Näherungen
+// (03_daten_flotte, ungeklärt).
+// Eigentümer stehen bewusst NICHT hier (öffentliches Repo, Entscheidung 2026-10-18):
+// Sie werden mit Quelle und Status über die Admin-Seite in die Datenbank eingetragen
+// (Tabellen owners / vessel_owner, lib/owners.js). Die früher hier eingetragenen
+// Zuordnungen waren ungeprüft und wurden nicht übernommen.
 const YACHTS = [
-  { mmsi: '319225400', name: 'Koru',         owner: 'Jeff Bezos',                 length: 127, flag: '🇰🇾' },
-  { mmsi: '538071886', name: 'Carinthia VII', owner: 'Porsche/Piëch-Familie',     length: 75,  flag: '🇲🇭' },
-  { mmsi: '319318200', name: 'My Deep Blue', owner: 'unbestätigt',                 length: 134, flag: '🇰🇾' },
-  { mmsi: '538072122', name: 'Launchpad',    owner: 'Mark Zuckerberg',            length: 118, flag: '🇲🇭' },
-  { mmsi: '319205400', name: 'Boardwalk',    owner: 'Tilman Fertitta',            length: 77,  flag: '🇰🇾' },
-  { mmsi: '538071476', name: 'Kismet',       owner: 'Shahid Khan',                length: 122, flag: '🇲🇭' },
-  { mmsi: '319076700', name: 'Symphony',     owner: 'Bernard Arnault',            length: 101, flag: '🇰🇾' },
-  { mmsi: '319306800', name: 'Moonrise',     owner: 'Undisclosed',                length: 100, flag: '🇰🇾' },
-  { mmsi: '311001556', name: 'Emerald Kaia', owner: 'Emerald Cruises (kommerziell)', length: 142, flag: '🇧🇸' },
-  { mmsi: '319032600', name: 'Musashi',      owner: 'Larry Ellison',              length: 88,  flag: '🇰🇾' },
+  { mmsi: '319225400', name: 'Koru',          length: 127, flag: '🇰🇾' },
+  { mmsi: '538071886', name: 'Carinthia VII', length: 75,  flag: '🇲🇭' },
+  { mmsi: '319318200', name: 'My Deep Blue',  length: 134, flag: '🇰🇾' },
+  { mmsi: '538072122', name: 'Launchpad',     length: 118, flag: '🇲🇭' },
+  { mmsi: '319205400', name: 'Boardwalk',     length: 77,  flag: '🇰🇾' },
+  { mmsi: '538071476', name: 'Kismet',        length: 122, flag: '🇲🇭' },
+  { mmsi: '319076700', name: 'Symphony',      length: 101, flag: '🇰🇾' },
+  { mmsi: '319306800', name: 'Moonrise',      length: 100, flag: '🇰🇾' },
+  { mmsi: '311001556', name: 'Emerald Kaia',  length: 142, flag: '🇧🇸' },   // kommerziell, Entfernen offen
+  { mmsi: '319032600', name: 'Musashi',       length: 88,  flag: '🇰🇾' },
 ];
 
 const byMmsi = new Map(YACHTS.map(y => [y.mmsi, y]));

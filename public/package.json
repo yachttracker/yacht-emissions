@@ -1,0 +1,1 @@
+{ "type": "module", "private": true, "description": "Frontend-Module (Browser). Nur damit node --check die Dateien als ES-Module prüft." }

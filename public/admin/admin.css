@@ -1,0 +1,37 @@
+/* ── Admin-Seite (ergänzt app.css) ── */
+.admin-link { color: var(--mast-ink); font-weight: 500; }
+.admin-page { max-width: 980px; display: grid; gap: 16px; }
+.admin-top { display: flex; justify-content: space-between; align-items: center; }
+.admin-card { background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow); padding: 18px 20px 20px; display: grid; gap: 10px; }
+.admin-card h2 { font-size: 18px; }
+.signin { max-width: 520px; }
+.row-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row-form .input { flex: 1 1 16rem; }
+.form-ok { color: var(--good); font-size: 14px; }
+.form-error { color: var(--warn); font-size: 14px; font-weight: 500; }
+.new-link { background: var(--share-bg); border-radius: var(--radius-m); padding: 12px; display: grid; gap: 8px; }
+.link-out { font-size: 13px; }
+.admin-table td { white-space: normal; }
+.admin-table tr.is-revoked td { color: var(--muted); }
+.admin-table tbody tr { cursor: default; }
+
+.switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; font-weight: 500; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track { width: 44px; height: 26px; border-radius: 999px; background: var(--line-strong); position: relative; transition: background .15s; flex: none; }
+.switch-track::after { content: ''; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); transition: transform .15s; box-shadow: 0 1px 2px rgba(0, 0, 0, .2); }
+.switch input:checked + .switch-track { background: var(--cat-yacht); }
+.switch input:checked + .switch-track::after { transform: translateX(18px); }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.owner-rows { display: grid; gap: 12px; }
+.owner-row { border: 1px solid var(--line); border-radius: var(--radius-m); padding: 12px 14px; display: grid; gap: 10px; }
+.owner-row-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.owner-row-head h3 { font-size: 15px; }
+.owner-fields { display: grid; grid-template-columns: 1fr 1.6fr 9rem; gap: 8px 10px; }
+.owner-fields .field-wide:last-child { grid-column: 1 / -1; }
+.owner-fields .input, .owner-fields .select { width: 100%; }
+.owner-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 759px) {
+  .owner-fields { grid-template-columns: 1fr; }
+  .admin-link { font-size: 14px; }
+}

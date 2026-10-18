@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="color-scheme" content="light dark">
+  <title>Superyacht Emissions</title>
+  <meta name="description" content="Estimated CO₂ and air pollutant emissions of large private yachts, calculated from AIS ship tracking. Model estimates, not measurements.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/IBMPlexSans-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/app.css">
+  <script type="module" src="/js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#board">Skip to ranking</a>
+  <div id="banner-slot"></div>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+          <path d="M7 21h18l-3 4H10z" fill="currentColor" opacity=".55"/>
+          <path d="M8 17h16M10 13h12M13 9h6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <h1>Superyacht emissions</h1>
+          <p class="tagline">Estimated from AIS ship tracking. Model estimates, not measurements.</p>
+        </div>
+      </div>
+      <div class="views" role="tablist" aria-label="View">
+        <button type="button" role="tab" data-view="ranking" aria-selected="true" aria-controls="board">Ranking</button>
+        <button type="button" role="tab" data-view="map" aria-selected="false" aria-controls="board">Map</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section id="controls" class="controls" aria-label="Period and filters"></section>
+    <section id="kpis" class="kpis" aria-label="Key figures"></section>
+    <div class="workspace">
+      <section id="board" class="board" role="tabpanel" tabindex="-1">
+        <p class="loading-note">Loading data…</p>
+      </section>
+      <div id="detail-backdrop" class="detail-backdrop" aria-hidden="true"></div>
+      <aside id="detail" class="detail" hidden aria-label="Yacht details"></aside>
+    </div>
+  </main>
+
+  <footer id="statusbar" class="statusbar"></footer>
+  <noscript><p class="noscript">This dashboard needs JavaScript to load its data.</p></noscript>
+</body>
+</html>
