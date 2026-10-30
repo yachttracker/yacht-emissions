@@ -30,7 +30,7 @@ restore.sh latest <ZIEL_DATABASE_URL>          # neuestes Tagesbackup
 restore.sh yacht-emissions/monthly/<Datei> <ZIEL_DATABASE_URL>
 ```
 
-Das Skript liegt im selben Image (`/usr/local/bin/restore.sh`) und braucht dieselben Bucket-Variablen. Ohne `CONFIRM_OVERWRITE=yes` verweigert es das Überschreiben der Datenbank aus `DATABASE_URL`. Danach den Backend-Dienst neu starten (Migrationen laufen beim Start idempotent).
+Das Ziel muss PostgreSQL 17 oder neuer sein (der Dump stammt von pg_dump 18; ältere Server kennen `transaction_timeout` nicht, so in der CI beobachtet). Das Skript liegt im selben Image (`/usr/local/bin/restore.sh`) und braucht dieselben Bucket-Variablen. Ohne `CONFIRM_OVERWRITE=yes` verweigert es das Überschreiben der Datenbank aus `DATABASE_URL`. Danach den Backend-Dienst neu starten (Migrationen laufen beim Start idempotent).
 
 **Wiederherstellungstest:** Einmal vor dem Echtbetrieb und danach gelegentlich in eine leere Test-Datenbank zurückspielen. Ein Backup gilt erst als brauchbar, wenn das einmal geklappt hat.
 
