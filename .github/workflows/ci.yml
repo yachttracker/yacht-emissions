@@ -47,3 +47,8 @@ jobs:
           echo "Server antwortet nicht:"; cat server.log; exit 1
       - name: API-Tests (Zeitfenster, Maskierung, Admin-Schutz)
         run: node --test --test-reporter=spec test/api.test.js
+      - name: Backup-Skripte testen (Dump, Upload-Ersatz, Aufbewahrung, Rückspielen)
+        run: TEST_ADMIN_URL=postgresql://postgres:ci@localhost:5432/postgres bash backup/test/run-test.sh
+      - name: Backup-Skripte mit shellcheck prüfen (nur Hinweis)
+        continue-on-error: true
+        run: shellcheck backup/backup.sh backup/restore.sh backup/test/run-test.sh backup/test/stub/aws
