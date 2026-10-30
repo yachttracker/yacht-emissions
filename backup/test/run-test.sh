@@ -59,6 +59,8 @@ ok "Monatskopie nicht doppelt"
 
 # 6. Fehlerfälle
 cnt() { find "$STUB_S3_DIR/testbucket" -type f | wc -l; }
+# Dateiname enthält die Sekunde: kurz warten, damit dieser Lauf kein Backup derselben Sekunde überschreibt
+sleep 1.1
 before=$(cnt)
 if STUB_WRONG_SIZE=1 bash "$ROOT_BACKUP/backup.sh" >/dev/null 2>&1; then fail "falsche Größe im Bucket muss scheitern"; fi
 [[ "$(cnt)" == "$before" ]] || fail "fehlerhafter Upload wurde nicht entfernt"
