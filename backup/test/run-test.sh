@@ -13,7 +13,10 @@ export STUB_S3_DIR="$(mktemp -d)"; export PATH="$HERE/stub:$PATH"
 export PGSSLMODE=disable
 export BUCKET=testbucket ENDPOINT=http://stub ACCESS_KEY_ID=x SECRET_ACCESS_KEY=y
 trap 'rm -rf "$STUB_S3_DIR"; psql "$ADMIN" -qc "DROP DATABASE IF EXISTS backup_src" -c "DROP DATABASE IF EXISTS backup_dst" >/dev/null 2>&1 || true' EXIT
-fail() { echo "FEHLGESCHLAGEN: $*" >&2; exit 1; }
+annot() { [[ -n "${GITHUB_ACTIONS:-}" ]] && echo "::error::$(printf '%s' "$*" | tr '\n' '|' | cut -c1-900)" || true; }
+fail() { echo "FEHLGESCHLAGEN: $*" >&2; annot "FEHLGESCHLAGEN: $* | $(tail -n 5 /tmp/bt*.log 2>/dev/null)"; exit 1; }
+trap 'rc=$?; annot "Zeile $LINENO Exit $rc: $BASH_COMMAND | $(tail -n 5 /tmp/bt*.log 2>/dev/null)"' ERR
+[[ -n "${GITHUB_ACTIONS:-}" ]] && echo "::notice::$(pg_dump --version) / $(pg_restore --version) / Server $(psql "$ADMIN" -Atc 'show server_version')" || true
 ok() { echo "OK: $*"; }
 
 psql "$ADMIN" -qc "DROP DATABASE IF EXISTS backup_src" -c "DROP DATABASE IF EXISTS backup_dst" -c "CREATE DATABASE backup_src" -c "CREATE DATABASE backup_dst"
