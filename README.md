@@ -10,7 +10,7 @@ nie Anbieter-Abrufe aus.
 |---|---|
 | `server.js` | Express-Server, API, Zeitintegration, Zeitplan der Abruflogik |
 | `emissions.js` | Emissionsrate je AIS-Meldung (`CALC_VERSION`) |
-| `fleet.js` | Flotte (MMSI, Name, Länge, Flagge) – **ohne Eigentümer** |
+| `fleet.js`, `data/fleet.csv` | Flotte (108 Yachten: IMO, MMSI, Länge, GT, Baujahr, Kategorie; recherchierte Antriebsdaten mit Quelle) – **ohne Eigentümer** |
 | `lib/periods.js` | Zeitfenster: rollierend, Kalender (UTC), frei |
 | `lib/owners.js` | Eigentümer-Tabellen, Sichtbarkeit, Share-Links, zentrale Maskierung |
 | `lib/admin.js` | Admin-API (`/admin/api/*`) |

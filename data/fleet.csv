@@ -1,0 +1,113 @@
+# Flotte: Vereinigung Top 110 nach Länge (Wikipedia) und Top 100 nach GT (YachtBuyer YB100), Recherche 2026-10-30.
+# IMO, MMSI, Länge, GT, Baujahr: VesselFinder/MaritimeOptima (Sekundärquellen, abgerufen 2026-10-30). Keine Eigentümer (öffentliches Repo).
+# segment: private | state_royal (Staats-/Königshausyacht laut Wikipedia-Liste, ungeprüft). mmsi_status: sourced | unverified | conflict.
+# Ränge innerhalb der Kandidaten (GT, Länge). Ausgeschlossen und Begründung: Projektdokument recherche/flotte_top100.md.
+nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;note
+1;Fulk Al Salamah;9714460;461002000;164.0;20361;2016;state_royal;sourced;1;2;GT laut VesselFinder 20.361 (YachtBuyer-Liste ohne Fulk)
+2;Azzam;9693367;470992000;181.0;13136;2013;state_royal;sourced;5;1;
+3;Dilbar;9661792;319094900;156.0;15917;2016;private;sourced;2;6;
+4;Al Said;9463774;461001000;155.0;15850;2008;state_royal;sourced;3;7;
+5;Eclipse;1009613;518999664;163.0;;2010;private;sourced;;3;Flagge Cook Islands
+6;Blue;9862231;319239400;160.0;14785;2022;state_royal;sourced;4;5;
+7;Dubai;1006324;470886000;160.0;12488;2006;state_royal;sourced;9;4;
+8;Sailing Yacht A;1012141;667002036;142.81;12558;2017;private;sourced;6;11;Segelyacht
+9;A+;9551454;319054000;147.0;12532;2012;state_royal;sourced;7;9;bei VesselFinder noch als TOPAZ
+10;Opera;1012933;319258700;146.35;12518;2023;state_royal;sourced;8;10;
+11;Prince Abdulaziz;1003308;538071307;147.0;8074;1984;state_royal;sourced;25;8;
+12;Al Salamah;1007043;403003000;139.0;12234;1999;state_royal;sourced;10;20;
+13;Solaris;9819820;310792000;139.7;11247;2021;private;sourced;11;17;
+14;Scheherazade;9809980;319179200;140.0;10167;2020;private;sourced;12;15;
+15;Nord;9853785;273610820;142.0;9250;2021;private;conflict;17;12;KONFLIKT MMSI: VesselFinder/Wikipedia 211366970 (alt), MaritimeOptima 273610820 – aktuelle per Anbieter prüfen
+16;Octopus;1007213;319866000;126.0;9932;2003;private;sourced;13;26;
+17;Dragonfly;9907196;319296900;141.0;9408;2024;private;sourced;16;13;
+18;Luminance;9865087;319271500;139.0;9861;2024;private;sourced;14;18;
+19;Yas;8652201;319085200;141.0;5002;1981;state_royal;sourced;49;14;ex-Fregatte, Umbau 2015
+20;Al Mirqab;1009223;319361000;133.0;9604;2008;state_royal;sourced;15;25;
+21;Ocean Victory;1011850;319055400;140.0;8506;2014;private;sourced;22;16;
+22;My Deep Blue;9950686;319318200;137.0;9079;2026;private;sourced;18;21;MMSI aus fleet.js bestätigt
+23;Crescent;9785108;319136700;136.0;9034;2018;private;sourced;19;23;
+24;Rising Sun;8982307;319011000;139.0;7841;2004;private;sourced;27;19;
+25;Hadar (ex Flying Fox);9829394;533132807;136.0;9022;2019;private;sourced;20;22;Flying Fox umbenannt in Hadar → Dublette in den Listen
+26;Al Lusail;9772929;466443000;124.0;8514;2017;state_royal;sourced;21;32;
+27;Turama;8907216;403051000;117.0;8343;1990;state_royal;sourced;23;39;
+29;Katara;9562805;466066000;124.0;8010;2010;state_royal;sourced;26;30;
+30;Maryah;9044619;319068600;125.0;7023;2015;state_royal;sourced;31;27;Umbau 2015 aus Fähre (Bj. 1990)
+31;Golden Odyssey;9648788;310724000;124.0;7690;2015;private;sourced;28;31;
+32;Koru;9857298;319225400;125.0;3493;2023;private;sourced;75;28;MMSI aus fleet.js bestätigt
+33;Breakthrough;9899650;319300600;119.0;7247;2025;private;sourced;29;34;
+34;Seven Seas;9840178;319225300;125.0;4444;2022;private;sourced;61;29;AIS-Abmessung vermutlich falsch
+36;Multiverse;9770270;319105100;116.0;6862;2018;private;sourced;32;42;MaritimeOptima-URL zeigt alten Namen ULYSSES
+38;Kismet;9881627;538071476;122.0;4918;2024;private;sourced;54;33;MMSI aus fleet.js bestätigt
+39;O3 (ex Shackleton);9865738;538072318;107.0;6561;2026;private;sourced;34;59;Shackleton umbenannt in O3 → Dublette
+40;Lady Moura;1002380;309221000;105.0;6359;1990;private;sourced;35;64;
+41;Alexander;6603012;215838000;118.0;5933;1966;state_royal;sourced;38;35;bei VF als Passagierschiff geführt
+42;A;1009340;538071242;118.0;5959;2008;private;sourced;36;37;bei VF als MYA
+43;Launchpad;9857511;538072122;118.0;5528;2024;private;sourced;43;36;MMSI aus fleet.js bestätigt
+44;Andromeda;9692545;319879000;107.4;5937;2015;private;sourced;37;58;
+45;Liva O;9865075;215014000;118.0;5054;2023;private;sourced;48;38;bei VF als LIVA
+46;Zoza (ex Luminosity);9754032;319160100;105.0;5844;2022;private;sourced;39;65;heute ZOZA (Superyacht Times)
+47;Luna;1010222;538071095;114.0;5655;2010;private;sourced;40;47;zweite LUNA (IMO 1013066) ist andere Yacht
+48;Infinity;9817896;319208000;117.0;4978;2022;private;unverified;51;40;mehrere INFINITY – über Länge/Baujahr zugeordnet
+50;Le Grand Bleu;1006829;511100718;108.0;5556;2000;private;sourced;42;57;
+51;Atlantis II;1000667;310013000;116.0;3243;1981;private;sourced;85;43;
+52;Pelorus;8977273;319328900;115.0;5403;2003;private;conflict;44;46;KONFLIKT MMSI: VesselFinder 319029200 vs. MaritimeOptima 319328900
+53;Navtilvs;1000320;248652000;116.0;3413;1973;private;sourced;80;44;
+54;Ahpo (ex Lady Jorgia);9855276;538071653;115.0;5257;2021;private;sourced;45;45;Lady Jorgia umbenannt → Dublette
+55;Al Raya;9526758;319150300;110.0;5148;2008;state_royal;sourced;46;52;
+56;Radiant;9571105;319012900;110.0;5082;2010;private;sourced;47;53;
+57;Olivia O;9818797;215708000;88.5;4989;2018;private;sourced;50;110;
+58;Alaiya;1013016;319165800;111.0;4699;2019;private;sourced;55;50;frühere Namen TIS / LADY GULYA (gleiche IMO)
+59;Leviathan;9921491;319324100;110.0;4970;2025;private;sourced;52;51;
+60;Aviva;1012957;319111300;98.0;4966;2017;private;sourced;53;78;
+61;DreAMBoat;9967093;319305800;110.0;4525;2025;private;sourced;58;54;
+62;Ambassador;1012983;319138100;110.0;4693;2018;private;sourced;56;55;
+63;Bravo Eugenia;1012921;319156800;109.0;3418;2018;private;sourced;79;56;GT VF 3.418 vs. YachtBuyer 4.500
+65;Kaos;1012610;538071357;105.0;4523;2017;private;sourced;59;63;ex JUBILEE (alte MMSI 319112300)
+66;AV;1010167;319030100;94.45;4447;2010;private;sourced;60;87;
+67;IJE;1013004;538071332;107.0;3471;2019;private;sourced;77;60;
+68;Mar;9761762;319164300;107.0;3891;2020;state_royal;sourced;70;61;
+69;I Dynasty;9657545;319077300;101.0;4437;2015;private;sourced;62;73;
+70;Amadea;1012531;368260150;106.0;4402;2016;private;conflict;63;62;KONFLIKT MMSI: VF 319112900 (alt, Cayman) vs. MaritimeOptima 368260150 (USA nach Beschlagnahme)
+71;Quantum Blue;9740251;319835000;104.0;4341;2014;private;sourced;64;67;
+72;Dubawi;8708646;470891000;88.3;4184;1989;state_royal;sourced;65;112;
+73;Moonrise;9949869;319306800;100.0;4124;2025;private;sourced;66;75;MMSI aus fleet.js bestätigt = NEUE Moonrise (Bauname NB1013)
+74;Black Pearl;1012490;319113100;105.0;2864;2018;private;sourced;106;66;Segelyacht
+75;Reverie (ex Moonrise);9816232;319178500;99.95;3945;2020;private;sourced;67;76;alte Moonrise heißt jetzt REVERIE
+76;Vava II;1010387;319808000;97.0;3933;2012;private;sourced;68;80;
+77;Mayan Queen IV;1009479;319316000;93.25;3897;2008;private;unverified;69;91;VF meldet MMSI 0
+78;Ulysses;9927940;319278500;102.0;2999;2024;private;sourced;89;69;bei VF als ULYSSESS
+81;Carinthia VII;8994001;538071886;97.2;3643;2002;private;sourced;72;79;MMSI aus fleet.js bestätigt
+82;Symphony;1012098;319076700;101.0;3463;2015;private;sourced;78;72;MMSI aus fleet.js bestätigt
+84;NEOM (ex H3);1006245;248997000;95.0;3521;2000;private;unverified;74;85;VF führt IMO 1006245 inzwischen als NEOM (MMSI 248997000), frühere MMSI 232883000 (Indian Empress) – aktuellen Namen prüfen
+85;Attessa IV;9179830;319630000;101.0;2864;1999;private;sourced;105;74;
+86;Norn;9869758;211891450;89.0;3491;2023;private;sourced;76;106;MaritimeOptima führt Bauname 1601
+87;Madame Gu;1011331;319906000;99.0;2991;2013;private;sourced;95;77;
+88;Pure;1009120;319460000;82.0;3392;2008;private;sourced;81;117;
+89;Limitless;8975940;368344670;96.0;2146;1997;private;conflict;114;81;KONFLIKT MMSI: VF 368444000 vs. MaritimeOptima 368344670
+90;Queen Miri;9288203;538071066;92.0;3367;2004;private;sourced;82;95;
+91;Sophia;1012828;319113600;95.55;2991;2017;private;sourced;96;82;MaritimeOptima-URL mit Name FAITH (früherer Name?)
+92;Whisper;1012000;319069900;95.2;2928;2014;private;sourced;101;83;MMSI = frühere „alte Kismet“ aus Juni-Recherche
+93;Ice;9332406;631010093;90.08;3268;2005;private;sourced;84;103;MMSI 631 = Äquatorialguinea
+94;CC Summer;9807956;538071410;95.0;3091;2019;private;sourced;87;84;
+95;Tatoosh;1006336;319801000;92.1;3229;2000;private;sourced;86;94;bei VF als MY TATOOSH
+96;Bliss;9835707;538071599;95.0;2983;2021;private;unverified;98;86;mehrere BLISS – IMO 9835707 per Länge prüfen
+97;Moonlight II;9288215;215934000;91.4;3056;2004;private;sourced;88;98;
+98;O'Pari;9840829;215745000;94.0;2743;2020;private;sourced;109;88;
+99;Defy (ex Viva);9798246;319179500;94.0;2999;2021;private;sourced;91;89;MaritimeOptima führt dieselbe IMO/MMSI als VIVA → Viva umbenannt in Defy, Dublette
+100;Lady S;1013121;319137200;93.0;2999;2019;private;sourced;90;92;
+101;Eos;9377456;319087000;93.5;1517;2006;private;sourced;115;90;Segelyacht
+102;Artefact;9804332;538071148;80.0;2999;2020;private;sourced;92;119;
+103;Aquila;1009962;235108582;86.0;2998;2010;private;unverified;93;116;mehrere AQUILA – über Länge prüfen
+104;Royal Romance;1012268;533132576;93.0;2901;2015;private;sourced;103;93;
+105;Lionheart;1012323;249613000;90.0;2997;2016;private;unverified;94;105;zweite LIONHEART (IMO 9598658) ist andere Yacht – prüfen
+106;Aquarius;1012866;319107400;91.75;2856;2016;private;unverified;107;96;mehrere AQUARIUS – 1012866 = Feadship 2016 laut Suche
+108;Draak;1012086;319059800;91.5;2894;2014;private;unverified;104;97;ex EQUANIMITY – MMSI evtl. veraltet
+110;Lady Lara;1012311;319082300;91.0;2945;2015;private;sourced;100;100;
+111;Nahlin;1009417;235075032;90.22;1377;1930;private;sourced;117;101;historisch (1930)
+112;Dar;1013066;319133300;90.13;2926;2018;private;unverified;102;102;VF-Titel heute LUNA (URL noch DAR) – Umbenennung prüfen, nicht verwechseln mit Luna 1010222
+113;Phoenix 2;1010284;229617000;90.01;2667;2010;private;sourced;111;104;
+115;Nirvana;1011202;533132675;88.39;2786;2012;private;sourced;108;111;bei VF als MY NIRVANA
+116;Lonian;9800087;319139700;87.0;2691;2018;private;sourced;110;115;
+118;Maltese Falcon;9384552;249555000;87.35;1110;2006;private;sourced;118;114;Segelyacht
+119;Nero;1008449;319672000;80.83;1413;2007;private;sourced;116;118;
+;J7 Explorer;9967847;525401092;120.0;8076;2022;private;unverified;;;VesselFinder: Passagier-/Ro-Ro-Schiff, MaritimeOptima: Fähre – Nutzung als Privatyacht prüfen
