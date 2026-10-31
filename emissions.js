@@ -13,7 +13,7 @@
 //   5. Kraftstoff → CO2, SOx (kraftstoffbezogen); NOx (energiebezogen, mit LLF)   [Doc Gl. 3–7]
 //   6. Landstrom im Hafen: Anteil s_L der Hotellast mit Netzfaktor bewertet       [Doc Gl. 13]
 
-const CALC_VERSION = '2026-10-30-v3';
+const CALC_VERSION = '2026-10-31-v3.1';
 
 const envNum = (name, fallback) => {
   const v = Number(process.env[name]);
@@ -44,7 +44,13 @@ const PARAMS = {
   DRAUGHT_EXP: 0.66, SPEED_EXP: 3,
   LOAD_CAP: 0.98,          // Last > 100 % → 98 % – belegt: IMO4 S. 65
   SOG_CAP_FACTOR: 1.5,     // SOG > 1,5 · v_ref → v_ref – belegt: IMO4 S. 65
-  ME_OFF_LOAD: 0.07,       // Hauptmaschine < 7 % Last → 0 – belegt: IMO4 S. 72
+  ME_OFF_LOAD: 0.07,       // Hauptmaschine < 7 % Last → 0 – Wert belegt: IMO4, Text vor Tab. 20
+                           // (S. 73/74, Seitenangabe zu prüfen). Übertragung auf Yachten: Annahme.
+  // Mindestlast in Fahrt (v3.1, Entscheidung Paul 2026-10-31, Prüfbericht K2): Fährt die Yacht
+  // (> V_IDLE_KN), läuft der Antrieb; eine Last unter 7 % wird auf 7 % angehoben – für alle
+  // Antriebsarten gleich. Annahme (physikalisch begründet, nicht belegt); mit Prof. Baumann
+  // abzustimmen. ME_MIN_LOAD=0 stellt die IMO-Regel (unter 7 % = 0) wieder her (Sensitivität).
+  ME_MIN_LOAD: envNum('ME_MIN_LOAD', 0.07),
   DRAUGHT_RATIO_RANGE: [0.5, 1.5], // unplausible Tiefgangsverhältnisse → Faktor 1 – Annahme
 
   // ── Betriebsphasen ──
@@ -218,6 +224,12 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
     wMain *= (1 - s); load *= (1 - s);
   }
 
+  // Mindestlast in Fahrt (siehe PARAMS.ME_MIN_LOAD); unter Segeln (Phase 'sailing') bleibt der Antrieb aus
+  if (phase === 'underway' && wMain > 0 && PARAMS.ME_MIN_LOAD > 0 && load < PARAMS.ME_MIN_LOAD && prof.mcr_kw > 0) {
+    load = PARAMS.ME_MIN_LOAD;
+    wMain = load * prof.mcr_kw;
+  }
+
   let fuelMain = 0, fuelHotel = 0, noxMain = 0, noxHotel = 0; // g/h
 
   if (prof.propulsion === 'diesel_electric' || prof.propulsion === 'hybrid') {
@@ -250,7 +262,7 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
       fuelMain = wMain * PARAMS.SFC_BASE[cls][sfcIdx] * sfcLoadCurve(load);
       noxMain = wMain * PARAMS.NOX_ME[cls][tierIdx] * llfNox(load);
     } else {
-      wMain = 0; // IMO4 S. 72: unter 7 % Last keine Hauptmaschinenemissionen
+      wMain = 0; // IMO4: unter 7 % Last keine Hauptmaschinenemissionen (nur noch bei ME_MIN_LOAD < 0,07)
     }
     fuelHotel = pHotelOnboard * sfcAux;
     noxHotel = pHotelOnboard * PARAMS.NOX_AUX;

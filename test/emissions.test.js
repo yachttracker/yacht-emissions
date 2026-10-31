@@ -69,10 +69,25 @@ test('Fall D: dieselbe Yacht dieselelektrisch (η_el = 1)', () => {
   assert.ok(r.co2_kg_h < E.calcHourlyEmissions(example, 12, 0).co2_kg_h, 'dieselelektrisch günstiger als A');
 });
 
-test('IMO-Regeln: < 7 % Last aus, Deckel 98 %, SOG > 1,5 v_ref', () => {
-  // 7 kn bei v_ref 18: Last ≈ 0,074 → an; 6,5 kn → ≈ 0,069 → aus
+test('IMO-Regeln: Mindestlast 7 % in Fahrt (v3.1), Deckel 98 %, SOG > 1,5 v_ref', () => {
+  // 7 kn bei v_ref 18: Last ≈ 0,074 → unverändert; 6,5 kn → ≈ 0,069 → auf 7 % angehoben
   assert.ok(E.calcHourlyEmissions(example, 7, 0).fuel_main_kg_h > 0);
-  assert.equal(E.calcHourlyEmissions(example, 6.5, 0).fuel_main_kg_h, 0);
+  const slow = E.calcHourlyEmissions(example, 6.5, 0);
+  near(slow.me_load, 0.07, 1e-12, 'Mindestlast');
+  near(slow.p_main_kw, 0.07 * 8000, 1e-9, 'W = 7 % MCR');
+  assert.ok(slow.fuel_main_kg_h > 0);
+  // kein Sprung mehr zwischen 6 und 6,5 kn; dieselelektrisch und dieselmechanisch gleich behandelt
+  const dm6 = E.calcHourlyEmissions(example, 6, 0), de6 = E.calcHourlyEmissions({ ...example, propulsion: 'diesel_electric' }, 6, 0);
+  assert.ok(dm6.fuel_main_kg_h > 0 && de6.fuel_main_kg_h > 0);
+  near(dm6.p_main_kw, de6.p_main_kw, 1e-9, 'gleiche Antriebsleistung');
+  // liegend (≤ 2 kn) bleibt der Antrieb aus
+  assert.equal(E.calcHourlyEmissions(example, 1.5, 0).fuel_main_kg_h, 0);
+  // IMO-Originalregel (Sensitivität): ME_MIN_LOAD = 0 → unter 7 % keine Hauptmaschinenemissionen
+  const saved = E.PARAMS.ME_MIN_LOAD;
+  try {
+    E.PARAMS.ME_MIN_LOAD = 0;
+    assert.equal(E.calcHourlyEmissions(example, 6.5, 0).fuel_main_kg_h, 0);
+  } finally { E.PARAMS.ME_MIN_LOAD = saved; }
   const fast = E.calcHourlyEmissions(example, 20, 0);
   near(fast.me_load, 0.98, 1e-9, 'Deckel 98 %');
   const glitch = E.calcHourlyEmissions(example, 40, 0); // > 27 kn → durch v_ref ersetzt

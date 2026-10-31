@@ -169,7 +169,12 @@ function buildYacht(row) {
   if (num(row.length_m) != null) facts.length = S(num(row.length_m), SRC.vf);
   if (num(row.gt) != null) facts.gt = S(num(row.gt), SRC.vf);
   if (num(row.build_year) != null) facts.build_year = S(num(row.build_year), SRC.vf);
-  Object.assign(facts, DETAILS[row.imo] || {});
+  // Detailwerte ergänzen die CSV; ein nicht belegter Detailwert überschreibt keinen belegten
+  // CSV-Wert (Prüfbericht H6, My Deep Blue: Baujahr 2026 belegt vs. 2025 ungeprüft).
+  for (const [k, f] of Object.entries(DETAILS[row.imo] || {})) {
+    if (facts[k]?.status === 'sourced' && f.status !== 'sourced') continue;
+    facts[k] = f;
+  }
   return {
     imo: row.imo, mmsi: row.mmsi, name: row.name,
     flag: flagEmoji(MID[row.mmsi.slice(0, 3)]),

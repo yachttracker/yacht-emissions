@@ -187,7 +187,7 @@ app.get('/api/yachts/latest', async (req, res) => {
     `, [CFG.dataset]);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -214,12 +214,18 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
   }
 });
 
+// Öffentliche Fehlerantworten ohne interne Details (SQL o. ä.); Details nur ins Log (Prüfbericht H2)
+function serverError(res, err) {
+  console.error('[API]', err && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ') : err);
+  res.status(500).json({ error: 'internal error' });
+}
+
 const wantsMeta = (req) => req.query.meta === '1' || req.query.meta === 'true';
 const windowMeta = (win) => ({ window_from: win.t0.toISOString(), window_to: win.t1.toISOString(),
   period: win.period, mode: win.mode, period_h: win.period_h });
 function sendError(res, err) {
   if (err instanceof WindowError) return res.status(400).json({ error: err.message });
-  res.status(500).json({ error: err.message });
+  serverError(res, err);
 }
 
 // ── ZEITINTEGRATION ──────────────────────────────────────────────────────────
@@ -229,7 +235,7 @@ function sendError(res, err) {
 // ausgewiesen (coverage_h). Annahme: größtes geplantes Polling-Intervall 6 h
 // (unbewegte Yachten) + 1 h Toleranz für verspätete Meldungen.
 const MAX_GAP_HOURS = Number(process.env.MAX_GAP_HOURS) || 7;
-// Historie im 5-min-Raster: längere Lücke = echte Lücke (AIS aus / keine Abdeckung).
+// Historie im 1-min-Raster (Basic; Trial 15 min): längere Lücke = echte Lücke (AIS aus / keine Abdeckung).
 // Annahme: 1 h (Recherche 17.10.2026, Abschn. 6).
 const MAX_GAP_HOURS_HISTORY = Number(process.env.MAX_GAP_HOURS_HISTORY) || 1;
 
@@ -343,6 +349,7 @@ app.get('/api/status', async (_, res) => {
     const days = await pool.query(`
       SELECT COUNT(*)::int AS yacht_days,
              COUNT(*) FILTER (WHERE history_status = 'done')::int  AS history_done,
+             COUNT(*) FILTER (WHERE history_status = 'invalid')::int AS history_invalid,
              COUNT(*) FILTER (WHERE moved)::int                    AS detected_moved,
              -- Kontrolle der Erkennung an Tagen mit Historie
              COUNT(*) FILTER (WHERE history_moved AND moved)::int      AS hist_moved_detected,
@@ -354,7 +361,7 @@ app.get('/api/status', async (_, res) => {
                history_hour_utc: CFG.historyHourUtc, history_timegroup_min: CFG.timegroupMin,
                credits: st, last_30_days: days.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -370,7 +377,7 @@ app.get('/admin/plan', requireAdmin, async (req, res) => {
     if (!provider) return res.status(400).json({ error: 'AIS_PROVIDER=none' });
     const plan = await planner.planHistory(pool, provider, CFG, {
       lookbackDays: Number(req.query.lookback) || CFG.lookbackDays, backfill: req.query.backfill === 'true' });
-    res.json({ ...plan, skipped: plan.skipped.length, selected: plan.selected.map(c => `${c.day} ${c.name} P${c.prio} (${c.why})`) });
+    res.json({ ...plan, skipped: plan.skipped.length, backfill_calls: (plan.backfill_calls || []).length, selected: plan.selected.map(c => `${c.day} ${c.name} P${c.prio} (${c.why})`) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/admin/poll', requireAdmin, async (_, res) => {

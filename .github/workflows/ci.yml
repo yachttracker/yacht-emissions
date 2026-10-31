@@ -49,6 +49,8 @@ jobs:
         run: node --test --test-reporter=spec test/api.test.js
       - name: Emissionsberechnung v3 (Rechenbeispiel) und Neuberechnungsskript
         run: node --test --test-reporter=spec test/emissions.test.js test/recompute.test.js
+      - name: Abruflogik (Teilabrufe, Credit-Zähler, maskierte Historie, Rückwärtsabruf)
+        run: node --test --test-reporter=spec test/planner.test.js
       - name: Backup-Skripte testen (Dump, Upload-Ersatz, Aufbewahrung, Rückspielen)
         run: TEST_ADMIN_URL=postgresql://postgres:ci@localhost:5432/postgres bash backup/test/run-test.sh
       - name: Backup-Skripte mit shellcheck prüfen (nur Hinweis)
