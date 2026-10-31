@@ -67,7 +67,7 @@ async function setupDB() {
       name TEXT,
       owner TEXT,
       flag TEXT,
-      length_m INTEGER,
+      length_m DOUBLE PRECISION,
       latitude DOUBLE PRECISION,
       longitude DOUBLE PRECISION,
       speed_knots DOUBLE PRECISION,
