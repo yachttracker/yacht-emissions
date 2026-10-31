@@ -30,7 +30,10 @@ const { getProvider } = require('./providers');
 const planner = require('./lib/planner');
 const credits = require('./lib/credits');
 const { computeSchedule } = require('./lib/schedule');
+const identity = require('./lib/identity');
 const CFG = loadConfig();
+// Identitätsabgleich über die IMO: alle N Tage (Standard 7), beim Start nachgeholt, wenn überfällig
+const IDENTITY_CHECK_DAYS = Number(process.env.IDENTITY_CHECK_DAYS) || 7;
 
 // ── EMISSION CALCULATION ─────────────────────────────────────────────────────
 // Parameter, Quellen und Status: siehe emissions.js und 02_methodik.md.
@@ -370,6 +373,15 @@ app.get('/api/status', async (_, res) => {
   }
 });
 
+// ── IDENTITÄTSABGLEICH (öffentlich, nur lesend; keine Eigentümer) ────────────
+// Letzter Abgleich IMO ↔ MMSI je Yacht, Problemfälle zuerst (lib/identity.js).
+app.get('/api/identity', async (_, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json({ interval_days: IDENTITY_CHECK_DAYS, ...(await identity.latest(pool, CFG.dataset)) });
+  } catch (err) { serverError(res, err); }
+});
+
 // ── ADMIN (nur mit ADMIN_TOKEN; ohne Variable deaktiviert) ───────────────────
 // Schutz: konstanter Zeitvergleich, Fehlversuche je IP begrenzt (lib/security.js).
 // Admin-Seite: public/admin/ ; Admin-API: /admin/api/* (lib/admin.js)
@@ -384,6 +396,9 @@ app.get('/admin/plan', requireAdmin, async (req, res) => {
       lookbackDays: Number(req.query.lookback) || CFG.lookbackDays, backfill: req.query.backfill === 'true' });
     res.json({ ...plan, skipped: plan.skipped.length, backfill_calls: (plan.backfill_calls || []).length, selected: plan.selected.map(c => `${c.day} ${c.name} P${c.prio} (${c.why})`) });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/admin/identity', requireAdmin, async (_, res) => {
+  try { res.json(await runJob('identity')); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/admin/poll', requireAdmin, async (_, res) => {
   try { res.json(await runJob('poll')); } catch (err) { res.status(500).json({ error: err.message }); }
@@ -407,8 +422,8 @@ async function runJob(kind, opts = {}) {
   if (jobRunning) return { skipped: 'anderer Abruf läuft' };
   jobRunning = true;
   try {
-    const r = kind === 'poll'
-      ? await planner.pollLive(pool, provider, CFG, { extended: opts.extended })
+    const r = kind === 'poll' ? await planner.pollLive(pool, provider, CFG, { extended: opts.extended })
+      : kind === 'identity' ? await identity.run(pool, provider, CFG, { yachts: YACHTS })
       : await planner.runHistory(pool, provider, CFG, opts);
     console.log(`[ABRUF] ${kind}`, JSON.stringify(r).slice(0, 500));
     return r;
@@ -428,6 +443,19 @@ function startScheduler() {
   cron.schedule(`23 ${CFG.historyHourUtc} * * *`, () => {
     runJob('history').catch(e => console.error('[ABRUF] history', e.message));
   }, { timezone: 'Etc/UTC' });
+  // Identitätsabgleich: täglich 02:41 UTC nachsehen, ob er fällig ist (alle IDENTITY_CHECK_DAYS Tage),
+  // und 2 min nach dem Start (holt einen versäumten Lauf nach, z. B. nach Neustart oder beim ersten Deploy)
+  const identityIfDue = async (why) => {
+    try {
+      const last = await identity.lastRunAt(pool, CFG.dataset);
+      if (last && Date.now() - last.getTime() < (IDENTITY_CHECK_DAYS - 0.5) * 86400000) return;
+      const r = await runJob('identity');
+      console.log(`[IDENTITÄT] ${why}`, JSON.stringify(r).slice(0, 400));
+      if (r && r.skipped === 'anderer Abruf läuft') setTimeout(() => identityIfDue('Wiederholung'), 600000);
+    } catch (e) { console.error('[IDENTITÄT]', e.message); }
+  };
+  cron.schedule('41 2 * * *', () => identityIfDue('planmäßig'), { timezone: 'Etc/UTC' });
+  setTimeout(() => identityIfDue('nach Start'), 120000);
   console.log(`[ABRUF] ${CFG.provider} (${CFG.dataset}${CFG.dryRun ? ', dry-run' : ''}): ${YACHTS.length} Yachten, ` +
     `Live ${sch.polls_per_day}×/Tag (${hours} UTC, extended ${sch.extended_hour_utc}), Historie ${CFG.historyHourUtc}:23 UTC ` +
     `im ${CFG.timegroupMin}-min-Raster, Plan ${sch.projected_month_31d} Credits/31 Tage (${sch.share_pct} %)`);

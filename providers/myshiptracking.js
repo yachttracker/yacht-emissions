@@ -141,6 +141,40 @@ async function fetchLive(mmsis, { extended = false } = {}) {
   return { positions: out, charged, calls };
 }
 
+// Identitätsabgleich: Sammelabruf über die IMO statt die MMSI (Parameter imo, max. 100 IDs,
+// simple 1 Credit je gelieferter Yacht, leere Antwort kostenlos; belegt: Bulk-Doku, abgerufen
+// 2026-10-31). Ungeklärt: ob MST zu einer IMO die aktuelle MMSI liefert und was bei mehreren
+// MMSIs je IMO zurückkommt → alle Datensätze werden zurückgegeben, ausgewertet in lib/identity.js.
+async function fetchByImo(imos) {
+  const records = []; let charged = 0; const calls = [];
+  for (let i = 0; i < imos.length; i += MAX_IDS) {
+    const chunk = imos.slice(i, i + MAX_IDS);
+    let r;
+    try {
+      r = await call('/vessel/bulk', { imo: chunk.join(','), response: 'simple' });
+    } catch (e) {
+      charged += e.charged || 0;
+      calls.push({ ids: chunk.length, charged: e.charged || 0, status: e.status ?? null, error: e.message });
+      if (e.status === 401 || e.status === 402) break;
+      continue;
+    }
+    const c = chargedOrEstimate(r, r.data.length * COSTS.live_simple);
+    charged += c.charged;
+    calls.push({ ids: chunk.length, charged: c.charged, estimated: c.estimated, status: r.status, returned: r.data.length });
+    for (const v of r.data) {
+      records.push({ imo: v.imo ? String(v.imo) : null, mmsi: v.mmsi ? String(v.mmsi) : null,
+        name: v.vessel_name ?? null, received: parseUtc(v.received),
+        lat: num(v.lat), lon: num(v.lng), sog: num(v.speed) });
+    }
+  }
+  if (calls.length && calls.every(c => c.error)) {
+    const err = new Error(calls.map(c => c.error).join(' | '));
+    err.status = calls[0].status; err.charged = charged; err.calls = calls;
+    throw err;
+  }
+  return { records, charged, calls };
+}
+
 // Historie einer Yacht für [from, to) in timegroup-Minuten.
 async function fetchHistory(mmsi, fromIso, toIso, { timegroup = 5 } = {}) {
   const r = await call('/vessel/track', { mmsi, fromdate: fromIso, todate: toIso, timegroup });
@@ -156,4 +190,4 @@ async function fetchHistory(mmsi, fromIso, toIso, { timegroup = 5 } = {}) {
            calls: [{ ids: 1, charged: c.charged, estimated: c.estimated, status: r.status, returned: r.data.length }] };
 }
 
-module.exports = { name: 'myshiptracking', COSTS, fetchLive, fetchHistory, parseUtc };
+module.exports = { name: 'myshiptracking', COSTS, fetchLive, fetchHistory, fetchByImo, parseUtc };
