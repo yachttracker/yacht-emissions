@@ -67,5 +67,10 @@ export const DATASET_BANNER = {
   trial: { title: 'Trial data.', text: 'Provider trial used for calibration. Values may be incomplete.' },
 };
 
+// Funktionsschalter. map:false = keine Karte: kein Map-Tab, keine Routenkarte im Detailpanel,
+// Leaflet und Kartenkacheln werden nie geladen. Wieder einschalten: map auf true setzen.
+// (Stand 2026-10-31: aus, solange viele Positionen alt sind und die Datenlage klein ist.)
+export const FEATURES = { map: false };
+
 export const REFRESH_MS = 5 * 60 * 1000;    // Daten kommen nur wenige Male am Tag hinzu
 export const DEFAULTS = { view: 'ranking', period: 'month', mode: 'rolling', metric: 'co2' };

@@ -1,6 +1,6 @@
 // ── Dashboard: Zustand, Laden, Darstellung ───────────────────────────────────
 import { CATEGORIES, METRICS, PERIODS, SIZE_CLASSES, COVERAGE_STEPS, FILTERS, STATUS, DATASET_BANNER,
-  REFRESH_MS, DEFAULTS } from './config.js';
+  REFRESH_MS, DEFAULTS, FEATURES } from './config.js';
 import * as api from './api.js';
 import { h, clear, icon } from './dom.js';
 import * as fmt from './format.js';
@@ -26,7 +26,7 @@ const win = () => (state.period === 'custom'
 // Zustand in der Adresszeile (#…), damit Ansichten teilbar sind – ohne Share-Schlüssel
 function readHash() {
   const p = new URLSearchParams(window.location.hash.slice(1));
-  if (['ranking', 'map'].includes(p.get('view'))) state.view = p.get('view');
+  if (['ranking', ...(FEATURES.map ? ['map'] : [])].includes(p.get('view'))) state.view = p.get('view');
   if (p.get('layout') === 'table') state.layout = 'table';
   if (PERIODS.some(x => x.key === p.get('period'))) state.period = p.get('period');
   if (p.get('mode') === 'calendar') state.mode = 'calendar';
@@ -356,6 +356,7 @@ function renderBoard(rows, built) {
     t.setAttribute('aria-selected', t.dataset.view === state.view ? 'true' : 'false');
     t.tabIndex = t.dataset.view === state.view ? 0 : -1;
   }
+  if (!FEATURES.map && state.view === 'map') state.view = 'ranking';
   if (state.view === 'map') {
     const key = JSON.stringify([state.metric, win(), rows.map(r => [r.mmsi, r.value, r.last_seen])]);
     if (root._mapKey === key && root._map) return;
@@ -564,7 +565,7 @@ function renderDetail(r) {
   clear(panel);
   const fleetY = state.fleet && state.fleet.yachts.find(y => y.mmsi === r.mmsi);
   const chartEl = h('div', { class: 'chart-host' }, h('p', { class: 'chart-empty' }, 'Loading reports…'));
-  const mapEl = h('div', { class: 'route-map', role: 'region', 'aria-label': 'Route map' });
+  const mapEl = FEATURES.map ? h('div', { class: 'route-map', role: 'region', 'aria-label': 'Route map' }) : null;
   const histNote = h('p', { class: 'fine' });
 
   panel.append(
@@ -582,8 +583,8 @@ function renderDetail(r) {
     h('div', { class: 'detail-figures' }),
     h('section', { class: 'detail-section' },
       h('h3', {}, 'CO₂ emission rate over time'), chartEl, histNote),
-    h('section', { class: 'detail-section' },
-      h('h3', {}, 'Route in this period'), mapEl),
+    mapEl ? h('section', { class: 'detail-section' },
+      h('h3', {}, 'Route in this period'), mapEl) : '',
     h('section', { class: 'detail-section' },
       h('h3', {}, 'Master data'), masterData(fleetY)),
     h('section', { class: 'detail-section placeholder' },
@@ -606,8 +607,10 @@ function renderDetail(r) {
     histNote.textContent = meta.downsampled
       ? `${fmt.int(meta.points_raw)} reports, shown as averages per ${fmt.hours(meta.bucket_s / 3600)} for display. Gaps longer than ${sm.max_gap_hours || 7} h (live) or ${sm.max_gap_hours_history || 1} h (track history) are left empty.`
       : `${fmt.int(meta.points_raw)} reports. A rate holds until the next report, for at most ${sm.max_gap_hours || 7} h (live) or ${sm.max_gap_hours_history || 1} h (track history); longer gaps are left empty.`;
-    renderRouteMap(mapEl, { points, last: fleetY && fleetY.last_position });
-    panel._map = mapEl._map;
+    if (mapEl) {
+      renderRouteMap(mapEl, { points, last: fleetY && fleetY.last_position });
+      panel._map = mapEl._map;
+    }
   }).catch(err => {
     if (err.name === 'AbortError') return;
     clear(chartEl).append(h('p', { class: 'chart-empty' }, `Reports could not be loaded: ${err.message}`));
@@ -693,6 +696,11 @@ function toast(text) {
 }
 
 function wireViews() {
+  if (!FEATURES.map) {   // ohne Karte gibt es nur das Ranking: Tab-Leiste entfällt ganz
+    const tabs = document.querySelector('.views');
+    if (tabs) tabs.remove();
+    return;
+  }
   for (const t of document.querySelectorAll('[data-view]')) {
     t.addEventListener('click', () => { state.view = t.dataset.view; renderAll(); });
     t.addEventListener('keydown', (e) => {
