@@ -15,8 +15,8 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 10;Opera;1012933;319258700;146.35;12518;2023;state_royal;sourced;8;10;
 11;Prince Abdulaziz;1003308;538071307;147.0;8074;1984;state_royal;sourced;25;8;
 12;Al Salamah;1007043;403003000;139.0;12234;1999;state_royal;sourced;10;20;
-13;Solaris;9819820;310792000;139.7;11247;2021;private;sourced;11;17;
-14;Scheherazade;9809980;319179200;140.0;10167;2020;private;sourced;12;15;
+13;Solaris;9819820;518999189;139.7;11247;2021;private;sourced;11;17;MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 518999189, letzte Meldung 2026-10-31 19:54 UTC; alte MMSI 310792000
+14;Scheherazade;9809980;533132321;140.0;10167;2020;private;sourced;12;15;MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 533132321, letzte Meldung 2026-10-20 05:31 UTC; alte MMSI 319179200
 15;Nord;9853785;273610820;142.0;9250;2021;private;conflict;17;12;KONFLIKT MMSI: VesselFinder/Wikipedia 211366970 (alt), MaritimeOptima 273610820 – aktuelle per Anbieter prüfen
 16;Octopus;1007213;319866000;126.0;9932;2003;private;sourced;13;26;
 17;Dragonfly;9907196;319296900;141.0;9408;2024;private;sourced;16;13;
@@ -27,7 +27,7 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 22;My Deep Blue;9950686;319318200;137.0;9079;2026;private;sourced;18;21;MMSI aus fleet.js bestätigt
 23;Crescent;9785108;319136700;136.0;9034;2018;private;sourced;19;23;
 24;Rising Sun;8982307;319011000;139.0;7841;2004;private;sourced;27;19;
-25;Hadar (ex Flying Fox);9829394;533132807;136.0;9022;2019;private;sourced;20;22;Flying Fox umbenannt in Hadar → Dublette in den Listen
+25;Hadar (ex Flying Fox);9829394;319133800;136.0;9022;2019;private;sourced;20;22;Flying Fox umbenannt in Hadar → Dublette in den Listen; MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 319133800, letzte Meldung 2026-10-26 06:29 UTC; alte MMSI 533132807
 26;Al Lusail;9772929;466443000;124.0;8514;2017;state_royal;sourced;21;32;
 27;Turama;8907216;403051000;117.0;8343;1990;state_royal;sourced;23;39;
 29;Katara;9562805;466066000;124.0;8010;2010;state_royal;sourced;26;30;
@@ -62,12 +62,12 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 61;DreAMBoat;9967093;319305800;110.0;4525;2025;private;sourced;58;54;
 62;Ambassador;1012983;319138100;110.0;4693;2018;private;sourced;56;55;
 63;Bravo Eugenia;1012921;319156800;109.0;3418;2018;private;sourced;79;56;GT VF 3.418 vs. YachtBuyer 4.500
-65;Kaos;1012610;339302000;105.0;4523;2017;private;unverified;59;63;ex JUBILEE (alte MMSI 319112300); MMSI 538071357 bei MST zuletzt 2022-05-23, neue MMSI 339302000 (Jamaika) laut MaritimeOptima, abgerufen 2026-10-31; per IMO-Abgleich bestätigen
+65;Kaos;1012610;339302000;105.0;4523;2017;private;sourced;59;63;ex JUBILEE (alte MMSI 319112300); bestätigt durch MMSI-Abgleich über IMO (MST, 2026-10-31), letzte Meldung 2026-10-06 09:46 UTC; MMSI 538071357 bei MST zuletzt 2022-05-23, neue MMSI 339302000 (Jamaika) laut MaritimeOptima, abgerufen 2026-10-31; per IMO-Abgleich bestätigen
 66;AV;1010167;319030100;94.45;4447;2010;private;sourced;60;87;
 67;IJE;1013004;538071332;107.0;3471;2019;private;sourced;77;60;
 68;Mar;9761762;319164300;107.0;3891;2020;state_royal;sourced;70;61;
 69;I Dynasty;9657545;319077300;101.0;4437;2015;private;sourced;62;73;
-70;Amadea;1012531;368260150;106.0;4402;2016;private;conflict;63;62;KONFLIKT MMSI: VF 319112900 (alt, Cayman) vs. MaritimeOptima 368260150 (USA nach Beschlagnahme)
+70;Amadea;1012531;319112900;106.0;4402;2016;private;sourced;63;62;KONFLIKT MMSI: VF 319112900 (alt, Cayman) vs. MaritimeOptima 368260150 (USA nach Beschlagnahme); MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 319112900, letzte Meldung 2026-10-02 14:48 UTC; alte MMSI 368260150
 71;Quantum Blue;9740251;319835000;104.0;4341;2014;private;sourced;64;67;
 72;Dubawi;8708646;470891000;88.3;4184;1989;state_royal;sourced;65;112;
 73;Moonrise;9949869;319306800;100.0;4124;2025;private;sourced;66;75;MMSI aus fleet.js bestätigt = NEUE Moonrise (Bauname NB1013)
@@ -75,18 +75,18 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 75;Reverie (ex Moonrise);9816232;319178500;99.95;3945;2020;private;sourced;67;76;alte Moonrise heißt jetzt REVERIE
 76;Vava II;1010387;319808000;97.0;3933;2012;private;sourced;68;80;
 77;Mayan Queen IV;1009479;319316000;93.25;3897;2008;private;unverified;69;91;VF meldet MMSI 0
-78;Ulysses;9927940;538072099;102.0;2999;2024;private;unverified;89;69;bei VF als ULYSSESS; MMSI 319278500 bei MST zuletzt 2024-03-26, neue MMSI 538072099 (MH) laut Tradlinx (letzte Meldung 2026-09-22), abgerufen 2026-10-31; per IMO-Abgleich bestätigen
+78;Ulysses;9927940;538072099;102.0;2999;2024;private;sourced;89;69;bei VF als ULYSSESS; bestätigt durch MMSI-Abgleich über IMO (MST, 2026-10-31), letzte Meldung 2026-10-01 08:22 UTC; MMSI 319278500 bei MST zuletzt 2024-03-26, neue MMSI 538072099 (MH) laut Tradlinx (letzte Meldung 2026-09-22), abgerufen 2026-10-31; per IMO-Abgleich bestätigen
 81;Carinthia VII;8994001;538071886;97.2;3643;2002;private;sourced;72;79;MMSI aus fleet.js bestätigt
 82;Symphony;1012098;319076700;101.0;3463;2015;private;sourced;78;72;MMSI aus fleet.js bestätigt
 84;NEOM (ex H3);1006245;248997000;95.0;3521;2000;private;conflict;74;85;VF führt IMO 1006245 inzwischen als NEOM (MMSI 248997000), frühere MMSI 232883000 (Indian Empress) – aktuellen Namen prüfen; MMSI 248997000 bei MST zuletzt 2019-08-30; MagicPort führt IMO 1006245 als H3, MMSI 319259800 (KY), 105 m, in Fahrt (abgerufen 2026-10-31) – Widerspruch Name/Länge, per IMO-Abgleich klären
 85;Attessa IV;9179830;319630000;101.0;2864;1999;private;sourced;105;74;
-86;Norn;9869758;319261700;89.0;3491;2023;private;unverified;76;106;MaritimeOptima führt Bauname 1601; MMSI 211891450 (DE, Überführung) bei MST zuletzt 2023-04-17, neue MMSI 319261700 (KY) laut Tradlinx (letzte Meldung 2026-10-27), abgerufen 2026-10-31; per IMO-Abgleich bestätigen
-87;Madame Gu;1011331;319906000;99.0;2991;2013;private;sourced;95;77;
-88;Pure;1009120;319460000;82.0;3392;2008;private;sourced;81;117;
+86;Norn;9869758;319261700;89.0;3491;2023;private;sourced;76;106;MaritimeOptima führt Bauname 1601; bestätigt durch MMSI-Abgleich über IMO (MST, 2026-10-31), letzte Meldung 2026-10-31 08:46 UTC; MMSI 211891450 (DE, Überführung) bei MST zuletzt 2023-04-17, neue MMSI 319261700 (KY) laut Tradlinx (letzte Meldung 2026-10-27), abgerufen 2026-10-31; per IMO-Abgleich bestätigen
+87;Madame Gu;1011331;533133987;99.0;2991;2013;private;sourced;95;77;MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 533133987, letzte Meldung 2026-10-25 04:33 UTC; alte MMSI 319906000
+88;Pure;1009120;248393000;82.0;3392;2008;private;sourced;81;117;MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 248393000, letzte Meldung 2026-10-31 19:57 UTC; alte MMSI 319460000
 89;Limitless;8975940;368344670;96.0;2146;1997;private;conflict;114;81;KONFLIKT MMSI: VF 368444000 vs. MaritimeOptima 368344670
 90;Queen Miri;9288203;538071066;92.0;3367;2004;private;sourced;82;95;
 91;Sophia;1012828;319113600;95.55;2991;2017;private;sourced;96;82;MaritimeOptima-URL mit Name FAITH (früherer Name?)
-92;Whisper;1012000;319069900;95.2;2928;2014;private;sourced;101;83;MMSI = frühere „alte Kismet“ aus Juni-Recherche
+92;Whisper;1012000;538072792;95.2;2928;2014;private;sourced;101;83;MMSI = frühere „alte Kismet“ aus Juni-Recherche; MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 538072792, letzte Meldung 2026-10-31 19:56 UTC; alte MMSI 319069900
 93;Ice;9332406;631010093;90.08;3268;2005;private;sourced;84;103;MMSI 631 = Äquatorialguinea
 94;CC Summer;9807956;538071410;95.0;3091;2019;private;sourced;87;84;
 95;Tatoosh;1006336;319801000;92.1;3229;2000;private;sourced;86;94;bei VF als MY TATOOSH
