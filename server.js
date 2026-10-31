@@ -54,7 +54,12 @@ app.use(securityHeaders);
 app.use(cors());
 app.use(express.json({ limit: '20kb' }));
 // Statisches Frontend aus public/ (index.html, admin/, js/, css/, vendor/)
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '5m' }));
+// HTML, JS und CSS: no-cache = Browser fragt bei jedem Laden per ETag nach (304, kaum Last),
+// damit nach einem Deploy sofort die neue Version gilt. Schriften/Leaflet/Icons: 5 min Cache.
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '5m',
+  setHeaders: (res, file) => { if (/\.(html|js|css)$/.test(file)) res.setHeader('Cache-Control', 'no-cache'); },
+}));
 // Jede öffentliche API-Antwort läuft durch die zentrale Eigentümer-Maskierung
 app.use('/api', apiLimiter, ownersLib.publicApi(ownerStore));
 

@@ -696,11 +696,13 @@ function toast(text) {
 }
 
 function wireViews() {
+  // Tab-Leiste ist im HTML versteckt (kein kurzes Aufblitzen, keine Abhängigkeit von gecachtem JS)
+  const tabs = document.querySelector('.views');
   if (!FEATURES.map) {   // ohne Karte gibt es nur das Ranking: Tab-Leiste entfällt ganz
-    const tabs = document.querySelector('.views');
     if (tabs) tabs.remove();
     return;
   }
+  if (tabs) tabs.hidden = false;
   for (const t of document.querySelectorAll('[data-view]')) {
     t.addEventListener('click', () => { state.view = t.dataset.view; renderAll(); });
     t.addEventListener('keydown', (e) => {

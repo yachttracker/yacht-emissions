@@ -106,6 +106,7 @@ button, input, select { font: inherit; color: inherit; }
 .brand h1 { font-size: 23px; line-height: 1.15; }
 .tagline { color: var(--mast-ink-2); font-size: 14px; margin-top: 2px; }
 .views { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, .08); }
+.views[hidden] { display: none; }
 .views button {
   border: 0; background: transparent; color: var(--mast-ink-2); padding: 7px 18px; border-radius: 999px;
   cursor: pointer; font-weight: 500;
