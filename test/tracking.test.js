@@ -11,8 +11,8 @@ const tracking = require('../lib/tracking');
 const { YACHTS } = require('../fleet');
 
 const DILBAR = YACHTS.find(y => y.imo === '9661792');
-const HEAD = 'imo;name;reason;since;last_seen;next_check;source_url;note';
-const row = (o = {}) => ({ imo: '9661792', name: 'Dilbar', reason: 'seized', since: '2026-11-01',
+const HEAD = 'imo;name;action;reason;since;last_seen;next_check;source_url;note';
+const row = (o = {}) => ({ imo: '9661792', name: 'Dilbar', action: 'pause', reason: 'seized', since: '2026-11-01',
   last_seen: '2023-11-22T09:31:48Z', next_check: '2026-12-01',
   source_url: 'https://www.themoscowtimes.com/2026/06/30/german-court-rules-eu-sanctions-no-longer-apply-to-superyacht-linked-to-usmanov-a93129', note: '', ...o });
 function csv(rows) {
@@ -29,6 +29,7 @@ test('CSV: gültige Pause wird der Flotten-MMSI zugeordnet', () => {
 test('CSV: Pause ohne Quelle, mit unbekanntem Grund oder fremder IMO wird abgelehnt', () => {
   assert.throws(() => tracking.loadStateCsv(csv([row({ source_url: '' })])), /source_url/);
   assert.throws(() => tracking.loadStateCsv(csv([row({ reason: 'urlaub' })])), /reason/);
+  assert.throws(() => tracking.loadStateCsv(csv([row({ action: 'stop' })])), /action/);
   assert.throws(() => tracking.loadStateCsv(csv([row({ imo: '1234567' })])), /nicht in der Flotte/);
   assert.throws(() => tracking.loadStateCsv(csv([row(), row()])), /doppelt/);
 });
@@ -104,5 +105,20 @@ if (DB) {
     const rev = await tracking.review(pool, DS, { now: new Date('2026-12-02T00:00:00Z') });
     assert.ok(rev.items.some(i => i.imo === '9661792' && i.issue === 'pause_due'), 'Wiedervorlage fällig');
     assert.ok(!rev.items.some(i => i.imo === '9661792' && i.issue === 'no_data'), 'pausiert → kein „keine Daten“-Eintrag');
+  });
+
+  test('watch: Hinweise ruhen bis zur Wiedervorlage, Yacht wird weiter abgefragt', async () => {
+    await clean();
+    const AZZAM = YACHTS.find(y => y.imo === '9693367');
+    const rows = tracking.loadStateCsv(csv([row({ imo: '9693367', name: 'Azzam', action: 'watch', reason: 'in_port',
+      last_seen: '', next_check: '2026-12-01', source_url: 'https://example.org/azzam' })]));
+    tracking.setStateForTest(rows);
+    assert.equal((await tracking.paused(pool, DS)).size, 0, 'watch ist keine Pause');
+    const before = await tracking.review(pool, DS, { now: new Date('2026-11-06T00:00:00Z') });
+    assert.ok(!before.items.some(i => i.imo === AZZAM.imo), 'keine Hinweise bis next_check');
+    assert.ok(before.items.some(i => i.issue === 'no_data' && i.imo !== AZZAM.imo), 'andere Yachten weiter gemeldet');
+    const due = await tracking.review(pool, DS, { now: new Date('2026-12-01T00:00:00Z') });
+    assert.ok(due.items.some(i => i.imo === AZZAM.imo && i.issue === 'watch_due'));
+    assert.ok(due.items.some(i => i.imo === AZZAM.imo && i.issue === 'no_data'), 'nach Wiedervorlage wieder gemeldet');
   });
 }
