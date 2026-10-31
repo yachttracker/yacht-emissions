@@ -1,0 +1,9 @@
+# Tracking-Zustand je Yacht (Konzept 2026-10-31). Nicht aufgeführte Yachten sind aktiv.
+# Eine Pause spart Live-Abrufe und Historie; der wöchentliche IMO-Abgleich fragt pausierte Yachten
+# trotzdem ab (Lebenszeichen, 1 Credit). Meldet die Yacht jünger als last_seen, wird sie automatisch
+# wieder aktiv und die Tage seit der Meldung (höchstens 7) werden als Historie nachgekauft.
+# Änderungen nur per Commit/Pull Request (Freigabe Paul); Vorschläge macht die Recherche-Aufgabe.
+# reason: refit | seized | laid_up | ais_off | other
+# last_seen: letzte bekannte AIS-Meldung beim Pausieren (UTC, ISO 8601; leer = keine bekannt)
+# next_check: Wiedervorlage für die Web-Recherche (YYYY-MM-DD)
+imo;name;reason;since;last_seen;next_check;source_url;note

@@ -68,6 +68,15 @@ jobs:
             echo "::error title=identity.test.js::${msg}"
             exit 1
           fi
+      - name: Tracking-Zustand (Pause, Lebenszeichen, Wiederaufnahme, Prüfliste)
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! node --test --test-reporter=spec test/tracking.test.js 2>&1 | tee tracking.out; then
+            msg=$(grep -v '^\s*$' tracking.out | tail -80 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=tracking.test.js::${msg}"
+            exit 1
+          fi
       - name: Backup-Skripte testen (Dump, Upload-Ersatz, Aufbewahrung, Rückspielen)
         run: TEST_ADMIN_URL=postgresql://postgres:ci@localhost:5432/postgres bash backup/test/run-test.sh
       - name: Backup-Skripte mit shellcheck prüfen (nur Hinweis)

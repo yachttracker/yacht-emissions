@@ -31,6 +31,7 @@ const planner = require('./lib/planner');
 const credits = require('./lib/credits');
 const { computeSchedule } = require('./lib/schedule');
 const identity = require('./lib/identity');
+const tracking = require('./lib/tracking');
 const CFG = loadConfig();
 // Identitätsabgleich über die IMO: alle N Tage (Standard 7), beim Start nachgeholt, wenn überfällig
 const IDENTITY_CHECK_DAYS = Number(process.env.IDENTITY_CHECK_DAYS) || 7;
@@ -379,6 +380,15 @@ app.get('/api/identity', async (_, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     res.json({ interval_days: IDENTITY_CHECK_DAYS, ...(await identity.latest(pool, CFG.dataset)) });
+  } catch (err) { serverError(res, err); }
+});
+
+// Prüfliste: Unstimmigkeiten (MMSI, keine frische Meldung, fällige Pausen), die eine
+// Web-Recherche auslösen; dazu die aktuellen Pausen (lib/tracking.js). Ohne Eigentümer.
+app.get('/api/review', async (_, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(await tracking.review(pool, CFG.dataset, { identityLatest: await identity.latest(pool, CFG.dataset) }));
   } catch (err) { serverError(res, err); }
 });
 
