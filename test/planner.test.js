@@ -116,7 +116,7 @@ test('Stichprobe: HISTORY_MAX_DAYS begrenzt den Historienlauf', async () => {
   assert.equal(plan.expected_credits, 100);
 });
 
-test('Rückwärtsabruf: nur in den letzten Periodentagen, ältere Tage, jüngste zuerst', async () => {
+test('Rückwärtsabruf: nur in den letzten Periodentagen, ältere Tage, älteste zuerst (Standard)', async () => {
   await clean();
   const base = { backfillDays: 365, backfillTailDays: 2, periodStartDay: 1 };
   // Mitte der Periode: kein Rückwärtsabruf
