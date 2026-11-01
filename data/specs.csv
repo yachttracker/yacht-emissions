@@ -9,7 +9,7 @@
 # R5 valid_from/valid_to nur bei Umbau im Messzeitraum (ab 2025-01-01); derzeit keiner.
 imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;engine;rated_rpm;rpm_status;engine_class;vmax_kn;vmax_status;valid_from;valid_to;note
 9714460;Fulk Al Salamah;diesel_mech;indication;27372;sourced;;4 × 6.843 kW;4 × Wärtsilä 12V32E;750;indication;ms;22;indication;;;Drehzahl: Wärtsilä 32 720/750 rpm (Herstellerseite), Variante 32E
-9693367;Azzam;codag;sourced;70096;sourced;72000;R2b: 94.000 hp (Hansa 03/2014) bestätigt durch belegten Verbrauch 13 t/h bei Höchstfahrt (BOAT; Modell 13,1 t/h) – geringerer Wert 35.048 kW ergäbe 6,6 t/h;2 × MTU-Diesel + 2 × Gasturbine;;;;33;indication;;;Leistung über Verbrauch validiert
+9693367;Azzam;codag;sourced;70096;sourced;72000;R2b: 94.000 hp (Hansa 03/2014) bestätigt durch belegten Verbrauch 13 t/h bei Höchstfahrt (BOAT, Modell 13,1 t/h) – geringerer Wert 35.048 kW ergäbe 6,6 t/h;2 × MTU-Diesel + 2 × Gasturbine;;;;33;indication;;;Leistung über Verbrauch validiert
 9661792;Dilbar;diesel_electric;sourced;30416;indication;30416;Genset-Summe (keine E-Motor-Angabe);Gensets 4 × Wärtsilä 12V32 + 2 × Wärtsilä 6L32D;750;indication;ms;22.5;indication;;;
 9463774;Al Said;diesel_mech;indication;16400;sourced;;2 × 8.200 kW;2 × MTU 20V 8000 M70;1150;indication;hs;20;indication;;;v_max SYT 20 vs. YCF/YB/YH 22 (Leitquelle SYT) / separate Gensets
 1009613;Eclipse;diesel_mech;indication;24028;indication;;4 × 6.007 kW (nur SYT);4 × MTU 20V 1163 TB93;;;hs;25;indication;;;Repo bisher Indiz dieselelektrisch
