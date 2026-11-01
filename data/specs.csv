@@ -2,13 +2,14 @@
 # Agenten-Ergebnisse nicht von Claude nachgeprüft), Einzelquellen je Yacht dort. Übernahmeregeln: Projektdokument recherche/stammdaten_steckbriefe.md (Paul, 2026-11-01).
 # Status: sourced = belegt (Werft/Hersteller oder 2 unabhängige Fachquellen) | indication = Indiz (1 Quelle, Schluss oder per Regel aufgelöster Widerspruch) | unverified = ungeklärt (fließt NICHT in die Rechnung).
 # Regeln: R0 belegt > Indiz > Standardwert. R1 „Diesel + Wellen, kein E-Motor“ = diesel_mech (indication). R2 Leistung: Leitquelle Werft > Superyacht Times (SYT) > YachtBuyer/YCF/BOAT > Wikipedia;
-#   MCR = Motorleistung; bleibt ein Widerspruch, gilt der geringere Wert (höherer in mcr_upper_kw). v_max analog: Leitquelle, bei Gleichrang der höhere Wert (Untergrenze der Emissionen, Annahme).
+#   MCR = Motorleistung; bleibt ein Widerspruch, gilt der geringere Wert (höherer in mcr_upper_kw). v_max analog: Leitquelle, bei Gleichrang der höhere Wert (Untergrenze; Paul 2026-11-01).
+# R2b: bestätigt eine belegte Verbrauchsangabe einen Leistungswert, schlägt sie die Regel „geringerer Wert“ (Paul 2026-11-01).
 # R3 dieselelektrisch: MCR = E-Fahrmotoren; fehlen sie, Genset-Summe (mcr_basis „Genset-Summe“, Obergrenze). Mechanische Hybride (PTI/PTO, E-Modus) = diesel_mech (Annahme: Fahrt mechanisch).
 # R4 engine_class aus Nenndrehzahl (IMO4 S. 49: MSD 300–900, HSD > 900 rpm); bei dieselelektrisch = Klasse der Gensets. Leer = Standard (hs).
 # R5 valid_from/valid_to nur bei Umbau im Messzeitraum (ab 2025-01-01); derzeit keiner.
 imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;engine;rated_rpm;rpm_status;engine_class;vmax_kn;vmax_status;valid_from;valid_to;note
 9714460;Fulk Al Salamah;diesel_mech;indication;27372;sourced;;4 × 6.843 kW;4 × Wärtsilä 12V32E;750;indication;ms;22;indication;;;Drehzahl: Wärtsilä 32 720/750 rpm (Herstellerseite), Variante 32E
-9693367;Azzam;codag;sourced;35048;indication;72000;R2 geringerer Wert (35.048 bis ca. 72.000 kW);2 × MTU-Diesel + 2 × Gasturbine;;;;33;indication;;;Validierung: 13 t/h bei Höchstfahrt (BOAT) / Repo bisher 70.096 kW (94.000 hp, Hansa)
+9693367;Azzam;codag;sourced;70096;sourced;72000;R2b: 94.000 hp (Hansa 03/2014) bestätigt durch belegten Verbrauch 13 t/h bei Höchstfahrt (BOAT; Modell 13,1 t/h) – geringerer Wert 35.048 kW ergäbe 6,6 t/h;2 × MTU-Diesel + 2 × Gasturbine;;;;33;indication;;;Leistung über Verbrauch validiert
 9661792;Dilbar;diesel_electric;sourced;30416;indication;30416;Genset-Summe (keine E-Motor-Angabe);Gensets 4 × Wärtsilä 12V32 + 2 × Wärtsilä 6L32D;750;indication;ms;22.5;indication;;;
 9463774;Al Said;diesel_mech;indication;16400;sourced;;2 × 8.200 kW;2 × MTU 20V 8000 M70;1150;indication;hs;20;indication;;;v_max SYT 20 vs. YCF/YB/YH 22 (Leitquelle SYT) / separate Gensets
 1009613;Eclipse;diesel_mech;indication;24028;indication;;4 × 6.007 kW (nur SYT);4 × MTU 20V 1163 TB93;;;hs;25;indication;;;Repo bisher Indiz dieselelektrisch
