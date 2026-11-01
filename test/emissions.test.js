@@ -140,7 +140,7 @@ test('Fehlende Stammdaten: Kategorie-Standardwerte werden gemeldet', () => {
   const r = E.calcHourlyEmissions({ length: 100 }, 12, 0);
   assert.equal(r.mcr_estimated, true);
   assert.equal(r.gt_estimated, true);
-  assert.deepEqual(r.profile_estimated, { propulsion: true, mcr_kw: true, gt: true, build_year: true, v_ref: true });
+  assert.deepEqual(r.profile_estimated, { propulsion: true, mcr_kw: true, gt: true, build_year: true, v_ref: true, engine_class: true });
   for (const k of ['fuel_kg_h', 'co2_kg_h', 'nox_kg_h', 'sox_kg_h']) assert.ok(Number.isFinite(r[k]) && r[k] > 0, k);
   near(E.gtFromLength(118.8), 6188 * Math.pow(118.8 / 118, 2.70844), 5, 'GT-Fallback');
 });
@@ -152,4 +152,23 @@ test('Nie negativ, nie NaN bei ungültigen Eingaben', () => {
       assert.ok(Number.isFinite(r[k]) && r[k] >= 0, `${k} bei (${s}, ${n})`);
     }
   }
+});
+
+test('v3.2: NOx mit Nenndrehzahl (IMO4 Tab. 23) und Motorklasse MSD', () => {
+  // Beispielwerte der Tabelle bei 500 rpm: Tier I 12,984, Tier II 10,536 g/kWh
+  near(E.noxFactor('ms', 1, 500), 12.984, 0.001, 'Tier I, 500 rpm');
+  near(E.noxFactor('ms', 2, 500), 10.536, 0.001, 'Tier II, 500 rpm');
+  assert.equal(E.noxFactor('hs', 2, 2100), 7.7, 'n ≥ 2.000 → Konstante');
+  assert.equal(E.noxFactor('hs', 2, null), 7.7, 'ohne Drehzahl → Tabelle HSD');
+  assert.equal(E.noxFactor('ms', 0, 750), 14.0, 'Tier 0 → Tabelle MSD');
+  // MSD: SFC 175 statt 185 g/kWh (Baujahr ab 2001) → Kraftstoff Hauptmaschine × 175/185
+  const hs = E.calcHourlyEmissions(example, 12, 0);
+  const ms = E.calcHourlyEmissions({ ...example, engine_class: 'ms', rated_rpm: 750 }, 12, 0);
+  near(ms.fuel_main_kg_h / hs.fuel_main_kg_h, 175 / 185, 1e-9, 'SFC-Verhältnis MSD/HSD');
+  assert.equal(ms.engine_class, 'ms');
+  assert.equal(ms.profile_estimated.engine_class, false);
+  // dieselelektrisch mit mittelschnellen Gensets: Antrieb und Hotellast mit SFC 175
+  const de = E.calcHourlyEmissions({ ...example, propulsion: 'diesel_electric', engine_class: 'ms' }, 0.3, 1);
+  const deHs = E.calcHourlyEmissions({ ...example, propulsion: 'diesel_electric' }, 0.3, 1);
+  near(de.fuel_kg_h / deHs.fuel_kg_h, 175 / 185, 1e-9, 'Gensets MSD');
 });

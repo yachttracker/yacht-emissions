@@ -55,6 +55,7 @@ export const FILTERS = [
 // Belegstatus je Wert (Projektregel: belegt / Annahme / ungeklärt; dazu Anbieterangabe)
 export const STATUS = {
   sourced: { label: 'Sourced', icon: 'check', hint: 'Backed by a cited source' },
+  indication: { label: 'Indication', icon: 'tilde', hint: 'Single source, inference or conflict resolved by a documented rule' },
   assumption: { label: 'Assumption', icon: 'tilde', hint: 'Estimated or assumed value' },
   unverified: { label: 'Unverified', icon: 'question', hint: 'Not yet checked against a source' },
   provider: { label: 'Provider data', icon: 'antenna', hint: 'Reported by the AIS data provider' },

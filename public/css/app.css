@@ -322,6 +322,7 @@ body.detail-open .workspace { grid-template-columns: minmax(0, 1fr) 440px; }
   border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--surface); white-space: nowrap; }
 .chip-sourced .icon { color: var(--good); }
 .chip-assumption .icon { color: var(--warn); }
+.chip-indication .icon { color: var(--warn); }
 .chip-unverified .icon { color: var(--muted); }
 .chip-provider .icon { color: var(--cat-yacht); }
 
