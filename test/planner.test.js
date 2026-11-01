@@ -125,8 +125,18 @@ test('Rückwärtsabruf: nur in den letzten Periodentagen, ältere Tage, jüngste
   // vorletzter Tag der Periode (29.11., Periodenende 01.12.): Rückwärtsabruf aktiv
   const tail = await planner.planHistory(pool, mst, cfgFor(base), { now: new Date('2026-11-29T03:30:00Z') });
   assert.ok(tail.backfill.days > 1000, `erwartet > 1000 Yacht-Tage, war ${tail.backfill.days}`);
-  assert.equal(tail.backfill.to, '2026-11-25', 'beginnt am Tag vor dem Regel-Lookback (3 Tage)');
+  // Standard: älteste Tage zuerst → das Fenster beginnt am ältesten Tag (365 Tage zurück), nicht am Regel-Lookback
+  assert.equal(tail.backfill.from, '2025-11-29', 'älteste Tage zuerst: beginnt 365 Tage zurück');
   assert.ok(tail.backfill.from < tail.backfill.to);
+  assert.ok(tail.backfill_calls[0].days[0] <= tail.backfill_calls.at(-1).days[0], 'aufsteigend');
+  // alte Logik: jüngste zuerst
+  const newest = await planner.planHistory(pool, mst, cfgFor({ ...base, backfillOrder: 'newest' }), { now: new Date('2026-11-29T03:30:00Z') });
+  assert.equal(newest.backfill.to, '2026-11-25', 'jüngste zuerst: beginnt am Tag vor dem Regel-Lookback (3 Tage)');
+  // Untergrenze und 2-Jahres-Kante
+  const from25 = await planner.planHistory(pool, mst, cfgFor({ ...base, backfillDays: 725, backfillFrom: '2026-01-01' }), { now: new Date('2026-11-29T03:30:00Z') });
+  assert.equal(from25.backfill.from, '2026-01-01', 'Untergrenze HISTORY_BACKFILL_FROM');
+  const deep = await planner.planHistory(pool, mst, cfgFor({ ...base, backfillDays: 5000 }), { now: new Date('2026-11-29T03:30:00Z') });
+  assert.equal(deep.backfill.from, '2024-12-04', 'höchstens 725 Tage zurück (2 Jahre minus 5 Tage Rand)');
   assert.ok(tail.expected_credits <= tail.status.month_left);
   // im Trial und ohne Einstellung aus
   const trial = await planner.planHistory(pool, mst, cfgFor({ ...base, trial: true }), { now: new Date('2026-11-29T03:30:00Z') });
