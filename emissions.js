@@ -13,7 +13,7 @@
 //   5. Kraftstoff → CO2, SOx (kraftstoffbezogen); NOx (energiebezogen, mit LLF)   [Doc Gl. 3–7]
 //   6. Landstrom im Hafen: Anteil s_L der Hotellast mit Netzfaktor bewertet       [Doc Gl. 13]
 
-const CALC_VERSION = '2026-10-31-v3.1';
+const CALC_VERSION = '2026-11-01-v3.2';
 
 const envNum = (name, fallback) => {
   const v = Number(process.env[name]);
@@ -28,6 +28,11 @@ const PARAMS = {
   // NOx [g/kWh] nach Tier (0 / I / II) – belegt: IMO4 Tab. 23, S. 75; Tab. 49, S. 410.
   // Tier III (nur in NECA, Baujahr ≥ 2016) ist ohne Geodaten nicht umgesetzt → wie Tier II (Annahme).
   NOX_ME: { hs: [10.0, 9.8, 7.7], ms: [14.0, 13.0, 10.5], ss: [18.1, 17.0, 14.4] },
+  // Ist die Nenndrehzahl n bekannt (data/specs.csv), gilt für Tier I/II die Formel aus IMO4 Tab. 23, S. 75
+  // (MARPOL Annex VI Reg. 13): n < 130 → Konstante; 130 ≤ n < 2.000 → a · n^b; n ≥ 2.000 → Konstante.
+  // IMO selbst rechnet MSD pauschal bei 500 rpm; die Anwendung je Yacht ist eine eigene Erweiterung
+  // (Entscheidung Paul 2026-11-01). Tier 0 hat keine Formel → Tabellenwert der Motorklasse.
+  NOX_RPM: { 1: [17.0, 45, -0.2, 9.8], 2: [14.4, 44, -0.23, 7.7] }, // Tier: [n<130, a, b, n≥2000]
   NOX_AUX: 11.2,          // Hilfsdiesel – belegt: IMO4 Tab. 23
   NOX_GAS_TURBINE: 6.1,   // belegt: IMO4 Tab. 23
   // Schwachlastfaktor NOx (Last < 20 %), linear zwischen den Stützstellen – belegt: IMO4 Tab. 20, S. 74
@@ -78,6 +83,8 @@ const PARAMS = {
   V_REF_DEFAULT_KN: 16.7,  // belegt als Flottenmittel: IMO4 Flottentabelle S. 100, Zeile Yacht (Design-Geschwindigkeit)
   BUILD_YEAR_DEFAULT: envNum('BUILD_YEAR_DEFAULT', 2011), // Annahme → SFC-Klasse ab 2001, Tier II
   ENGINE_CLASS_DEFAULT: 'hs', // schnelllaufende Diesel (z. B. MTU Series 4000) – Annahme
+  // Klassengrenzen (IMO4 S. 49): SSD ≤ 300 rpm, MSD 300–900 rpm, HSD > 900 rpm – belegt.
+  // Klasse je Yacht steht in data/specs.csv (aus der Nenndrehzahl bzw. Modellreihe).
   // GT aus Länge: GT ≈ 0,01513 · L^2,708 – Annahme: eigene log-log-Regression über 7 Yachten
   // (5 Referenzyachten + Dilbar + Azzam, GT aus 02_methodik/03_daten_flotte), R² = 0,97
   GT_FROM_LENGTH: [0.015134, 2.70844],
@@ -91,6 +98,18 @@ const NAV_ANCHOR = 1, NAV_MOORED = 5, NAV_SAILING = 8;
 function sfcYearIndex(year) { return year <= 1983 ? 0 : year <= 2000 ? 1 : 2; }
 // NOx-Tier nach Baujahr: 0 vor 2000, I 2000–2010, II ab 2011 (IMO4 S. 75)
 function noxTierIndex(year) { return year < 2000 ? 0 : year < 2011 ? 1 : 2; }
+
+// NOx-Faktor [g/kWh] der Hauptmaschinen bzw. Gensets: Formel mit Nenndrehzahl, sonst Klassentabelle
+function noxFactor(cls, tierIdx, ratedRpm) {
+  const f = PARAMS.NOX_RPM[tierIdx];
+  if (f && Number.isFinite(ratedRpm) && ratedRpm > 0) {
+    const [low, a, b, high] = f;
+    if (ratedRpm < 130) return low;
+    if (ratedRpm >= 2000) return high;
+    return a * Math.pow(ratedRpm, b);
+  }
+  return (PARAMS.NOX_ME[cls] || PARAMS.NOX_ME.hs)[tierIdx];
+}
 
 function sfcLoadCurve(load) {
   const [a, b, c] = PARAMS.SFC_CURVE;
@@ -166,7 +185,9 @@ function resolveProfile(yacht) {
     build_year_estimated: !yearKnown,
     v_ref_kn: vrefKnown ? yacht.vmax_kn : PARAMS.V_REF_DEFAULT_KN,
     v_ref_estimated: !vrefKnown,
-    engine_class: yacht.engine_class || PARAMS.ENGINE_CLASS_DEFAULT,
+    engine_class: PARAMS.SFC_BASE[yacht.engine_class] ? yacht.engine_class : PARAMS.ENGINE_CLASS_DEFAULT,
+    engine_class_estimated: !PARAMS.SFC_BASE[yacht.engine_class],
+    rated_rpm: Number.isFinite(yacht.rated_rpm) && yacht.rated_rpm > 0 ? yacht.rated_rpm : null,
     draught_ref_m: Number.isFinite(yacht.draught_ref_m) ? yacht.draught_ref_m : null,
     diesel_kw: Number.isFinite(yacht.diesel_kw) && yacht.diesel_kw > 0 ? yacht.diesel_kw : null, // CODAG
     switch_speed_kn: Number.isFinite(yacht.switch_speed_kn) ? yacht.switch_speed_kn : null,   // CODAG
@@ -201,8 +222,9 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
   const year = prof.build_year;
   const sfcIdx = sfcYearIndex(year);
   const tierIdx = noxTierIndex(year);
-  const cls = PARAMS.SFC_BASE[prof.engine_class] ? prof.engine_class : 'hs';
+  const cls = prof.engine_class;
   const sfcAux = PARAMS.SFC_BASE.aux[sfcIdx];
+  const noxMe = noxFactor(cls, tierIdx, prof.rated_rpm);
 
   // Hotellast
   const volume = volumeFromGT(prof.gt);
@@ -234,11 +256,13 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
 
   if (prof.propulsion === 'diesel_electric' || prof.propulsion === 'hybrid') {
     // Doc Gl. 9b: Gensets decken Antrieb und Hotellast, laufen nahe Optimum (SFC_base, ohne Lastkurve).
-    // Akku nicht simuliert (02_methodik). NOx: Gensets als schnelllaufende Diesel nach Tier – Annahme.
+    // Akku nicht simuliert (02_methodik). Gensets mit der Motorklasse und Nenndrehzahl aus data/specs.csv
+    // (Regel R4, 2026-11-01; Standard schnelllaufend). Für HSD ist SFC_base gleich dem Hilfsdiesel-Wert.
     const eMain = wMain / PARAMS.ETA_EL;
-    const efNox = PARAMS.NOX_ME.hs[tierIdx];
-    fuelMain = eMain * sfcAux;
-    fuelHotel = pHotelOnboard * sfcAux;
+    const efNox = noxMe;
+    const sfcGen = PARAMS.SFC_BASE[cls][sfcIdx];
+    fuelMain = eMain * sfcGen;
+    fuelHotel = pHotelOnboard * sfcGen;
     noxMain = eMain * efNox;
     noxHotel = pHotelOnboard * efNox;
   } else {
@@ -253,14 +277,14 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
       const loadD = wDiesel / dieselKw;
       if (loadD >= PARAMS.ME_OFF_LOAD) {
         fuelMain += wDiesel * PARAMS.SFC_BASE[cls][sfcIdx] * sfcLoadCurve(loadD);
-        noxMain += wDiesel * PARAMS.NOX_ME[cls][tierIdx] * llfNox(loadD);
+        noxMain += wDiesel * noxMe * llfNox(loadD);
       }
       fuelMain += wTurbine * PARAMS.SFC_GAS_TURBINE;
       noxMain += wTurbine * PARAMS.NOX_GAS_TURBINE;
       wMain = (loadD >= PARAMS.ME_OFF_LOAD ? wDiesel : 0) + wTurbine;
     } else if (load >= PARAMS.ME_OFF_LOAD) {
       fuelMain = wMain * PARAMS.SFC_BASE[cls][sfcIdx] * sfcLoadCurve(load);
-      noxMain = wMain * PARAMS.NOX_ME[cls][tierIdx] * llfNox(load);
+      noxMain = wMain * noxMe * llfNox(load);
     } else {
       wMain = 0; // IMO4: unter 7 % Last keine Hauptmaschinenemissionen (nur noch bei ME_MIN_LOAD < 0,07)
     }
@@ -292,7 +316,9 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
     profile_estimated: {
       propulsion: prof.propulsion_estimated, mcr_kw: prof.mcr_estimated, gt: prof.gt_estimated,
       build_year: prof.build_year_estimated, v_ref: prof.v_ref_estimated,
+      engine_class: prof.engine_class_estimated,
     },
+    engine_class: prof.engine_class,
     calc_version: CALC_VERSION,
   };
 }
@@ -306,6 +332,6 @@ function mainEngineLoad(speedKnots, vMaxKnots) {
 
 module.exports = {
   calcHourlyEmissions, operatingPhase, resolveProfile, propulsionPower,
-  volumeFromGT, gtFromLength, hotelLoadRef, sfcLoadCurve, llfNox,
+  volumeFromGT, gtFromLength, hotelLoadRef, sfcLoadCurve, llfNox, noxFactor,
   mainEngineLoad, estimateMCRFromLength, PARAMS, CALC_VERSION,
 };

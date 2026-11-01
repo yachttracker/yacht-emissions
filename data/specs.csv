@@ -1,0 +1,117 @@
+# Technische Stammdaten je Yacht (Schlüssel IMO). Quelle: Steckbriefe im Artefakt „Yacht-Steckbriefe“ (Recherche 2026-11-01,
+# Agenten-Ergebnisse nicht von Claude nachgeprüft), Einzelquellen je Yacht dort. Übernahmeregeln: Projektdokument recherche/stammdaten_steckbriefe.md (Paul, 2026-11-01).
+# Status: sourced = belegt (Werft/Hersteller oder 2 unabhängige Fachquellen) | indication = Indiz (1 Quelle, Schluss oder per Regel aufgelöster Widerspruch) | unverified = ungeklärt (fließt NICHT in die Rechnung).
+# Regeln: R0 belegt > Indiz > Standardwert. R1 „Diesel + Wellen, kein E-Motor“ = diesel_mech (indication). R2 Leistung: Leitquelle Werft > Superyacht Times (SYT) > YachtBuyer/YCF/BOAT > Wikipedia;
+#   MCR = Motorleistung; bleibt ein Widerspruch, gilt der geringere Wert (höherer in mcr_upper_kw). v_max analog: Leitquelle, bei Gleichrang der höhere Wert (Untergrenze der Emissionen, Annahme).
+# R3 dieselelektrisch: MCR = E-Fahrmotoren; fehlen sie, Genset-Summe (mcr_basis „Genset-Summe“, Obergrenze). Mechanische Hybride (PTI/PTO, E-Modus) = diesel_mech (Annahme: Fahrt mechanisch).
+# R4 engine_class aus Nenndrehzahl (IMO4 S. 49: MSD 300–900, HSD > 900 rpm); bei dieselelektrisch = Klasse der Gensets. Leer = Standard (hs).
+# R5 valid_from/valid_to nur bei Umbau im Messzeitraum (ab 2025-01-01); derzeit keiner.
+imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;engine;rated_rpm;rpm_status;engine_class;vmax_kn;vmax_status;valid_from;valid_to;note
+9714460;Fulk Al Salamah;diesel_mech;indication;27372;sourced;;4 × 6.843 kW;4 × Wärtsilä 12V32E;750;indication;ms;22;indication;;;Drehzahl: Wärtsilä 32 720/750 rpm (Herstellerseite), Variante 32E
+9693367;Azzam;codag;sourced;35048;indication;72000;R2 geringerer Wert (35.048 bis ca. 72.000 kW);2 × MTU-Diesel + 2 × Gasturbine;;;;33;indication;;;Validierung: 13 t/h bei Höchstfahrt (BOAT) / Repo bisher 70.096 kW (94.000 hp, Hansa)
+9661792;Dilbar;diesel_electric;sourced;30416;indication;30416;Genset-Summe (keine E-Motor-Angabe);Gensets 4 × Wärtsilä 12V32 + 2 × Wärtsilä 6L32D;750;indication;ms;22.5;indication;;;
+9463774;Al Said;diesel_mech;indication;16400;sourced;;2 × 8.200 kW;2 × MTU 20V 8000 M70;1150;indication;hs;20;indication;;;v_max SYT 20 vs. YCF/YB/YH 22 (Leitquelle SYT) / separate Gensets
+1009613;Eclipse;diesel_mech;indication;24028;indication;;4 × 6.007 kW (nur SYT);4 × MTU 20V 1163 TB93;;;hs;25;indication;;;Repo bisher Indiz dieselelektrisch
+9862231;Blue;diesel_mech;indication;10402;indication;10544;R2: 2 × 6.975 hp (YB) vs. 2 × 5.272 kW (SYT), Abstand 1,4 % → derselbe Motor, geringerer Wert;2 × MTU 16V 1163 M84;;;hs;21;indication;;;Hybrid PTI/PTO + Pod (belegt) → als mechanisch gerechnet (Annahme R3)
+1006324;Dubai;diesel_mech;indication;25204;sourced;25292;4 × 6.301 kW (SYT) vs. 6.323 kW (YB);4 × MTU 20V 1163 TB93;;;hs;26;indication;;;v_max SYT/BOAT/WP 26 vs. YB/YCF 25
+1012141;Sailing Yacht A;sail_aux;sourced;7300;indication;8600;Diesel 7.300 kW / E-Fahrmotoren 2 × 4.300 kW (geringerer Wert);2 × MTU 20V 4000 M73L + 2 E-Motoren;;;hs;21;indication;;;dieselelektrischer Hybrid / v_max unter Motor
+9551454;A+;diesel_mech;unverified;11920;indication;18252;R2: 2 × Pielstick 5.960 kW (WP/YH) vs. 6 × Wärtsilä 3.042 kW Genset (SYT);widersprüchlich (Pielstick / Wärtsilä 6L32CR / MTU);;;;25.5;indication;;;Antriebsart widersprüchlich (SYT dieselelektrisch, WP/YH mechanisch) → Standard / v_max 19,5/22,9/25,5
+1012933;Opera;diesel_electric;sourced;18252;indication;18252;Genset-Summe (keine E-Motor-Angabe);Gensets 6 × Wärtsilä 6L32D;750;indication;ms;22;indication;;;
+1003308;Prince Abdulaziz;diesel_mech;indication;11632;sourced;;2 × 5.816 kW;2 × Pielstick 12PC2-5V-400;520;sourced;ms;22;indication;;;Drehzahl: Datenblatt Fairbanks Morse PC2.5 (520 rpm)
+1007043;Al Salamah;diesel_mech;indication;13000;indication;13180;R2: 8.717–8.837 hp je Motor, geringerer Wert;2 × MTU 20V 1163 TB73;;;hs;21.5;indication;;;
+9819820;Solaris;diesel_electric;sourced;11702;sourced;11702;Genset-Summe (keine E-Motor-Angabe);Gensets 6 × MTU 16V 4000 M23S + 1 × 12V 4000 M23S;;;hs;18;indication;;;
+9809980;Scheherazade;diesel_mech;indication;13000;indication;13180;R2: 6.500–6.590 kW je Motor, geringerer Wert (itboat 7.512 hp nicht unabhängig, nicht berücksichtigt);2 × MTU 20V 1163 M84;;;hs;21;indication;;;v_max 15–21 widersprüchlich
+9853785;Nord;diesel_mech;indication;17200;sourced;17436;4 × 4.300–4.359 kW, geringerer Wert;4 × MTU 20V 4000 M93L;2100;indication;hs;20;indication;;;
+1007213;Octopus;diesel_electric;sourced;14320;sourced;14320;Genset-Summe (E-Motoren ohne Leistung);Gensets 8 × MTU 16V 4000 + 2 ABB-E-Motoren;;;hs;20;indication;;;
+9907196;Dragonfly;diesel_mech;indication;14600;sourced;;2 × 7.300 kW;2 × MAN 16V28/33D;1000;indication;hs;24;indication;;;Hybrid PTI/PTO + Pod → als mechanisch gerechnet (Annahme R3) / 1.000 rpm → nach IMO HSD
+9865087;Luminance;diesel_mech;indication;9004;indication;14600;R2 Leitquelle SYT (2 × MTU 4.502 kW) vs. YB/WP 2 × MAN 7.300 kW;2 × MTU 16V 1163 M74R (SYT);;;hs;20.5;indication;;;Motorhersteller widersprüchlich (MTU vs. MAN)
+8652201;Yas;diesel_mech;unverified;15660;indication;;2 × MTU 7.830 kW (SYT);2 × MTU (SYT) vs. 2 × Rolls-Royce-Gasturbine (BOAT);;;hs;30;indication;;;Antriebsart widersprüchlich (Diesel/Gasturbine) → Standard / ex-Fregatte
+1009223;Al Mirqab;diesel_electric;sourced;10000;indication;15210;E-Fahrmotoren 2 × 5.000 kW / Genset 14.215–15.210 kW;Gensets 5 × Wärtsilä 6L32CR + 2 E-Motoren;750;indication;ms;23;indication;;;
+1011850;Ocean Victory;diesel_electric;sourced;10400;indication;16872;E-Fahrmotoren 2 × ca. 5.200 kW / Genset 16.872 kW;Gensets 8 × MTU 16V 4000 M40B + 2 E-Motoren;;;hs;19.4;indication;;;v_max SYT 19,4 vs. YCF 25 (Leitquelle SYT)
+9950686;My Deep Blue;diesel_electric;indication;11520;indication;11520;Genset-Summe (E-Motoren ohne Leistung);Gensets 8 × MTU 16V 2000 M72 + 4 E-Motoren;;;hs;16;indication;;;
+9785108;Crescent;diesel_mech;indication;11204;indication;13000;R2 Leitquelle SYT (2 × 5.602 kW) vs. YB 2 × 6.500 kW;2 × MTU 20V 1163 M84;;;hs;15;indication;;;
+8982307;Rising Sun;diesel_mech;indication;32800;indication;36480;R2: 4 × 8.200 (YB, M70) vs. 4 × 9.120 kW (SYT, nennt ebenfalls M70) → SYT in sich widersprüchlich, geringerer Wert;4 × MTU 20V 8000;;;hs;28;indication;;;v_max SYT/WP 28 vs. YB 30
+9829394;Hadar (ex Flying Fox);diesel_mech;indication;8962;sourced;;2 × 4.481 kW;2 × MTU 16V 1163 M84;;;hs;20;indication;;;
+9772929;Al Lusail;diesel_mech;indication;13180;indication;;R2 Leitquelle SYT (2 × 6.590 kW) vs. YB 2 × 5.602 kW;2 × MTU 20V 1163 M84;;;hs;20;indication;;;geringerer Wert 11.204 kW (YB) liegt unter der Leitquelle
+8907216;Turama;diesel_mech;indication;6080;sourced;;2 × 3.040 kW;2 × Wärtsilä 8R32D;750;indication;ms;16;indication;;;Drehzahl aus Modellreihe Wärtsilä 32 (Annahme für R32D)
+9562805;Katara;diesel_mech;indication;13180;indication;14800;R2 Leitquelle SYT (TB73L 2 × 6.590 kW) vs. YCF/YB M94 2 × 7.400 kW;2 × MTU 20V 1163;;;hs;20;indication;;;
+9044619;Maryah;diesel_electric;sourced;8002;indication;8002;Genset-Summe 5 × 2.146 hp (nur Yachtharbour);Gensets 5 × Caterpillar + 2 Azipods;;;hs;18;indication;;;
+9648788;Golden Odyssey;diesel_electric;sourced;6000;indication;;E-Fahrmotoren 8.046 hp (als Summe gelesen, geringere Lesart);Gensets widersprüchlich + 2 Wärtsilä-E-Motoren;;;hs;20.5;indication;;;
+9857298;Koru;sail_aux;sourced;2920;sourced;;Leitquelle SYT 2 × 1.460 kW (YB 2 × 1.095 kW);2 × MTU 16V 2000 M72;;;hs;;;;;v_max 17–20 nicht nach Motor/Segel getrennt → Standard
+9899650;Breakthrough;diesel_electric;sourced;7500;sourced;7500;Genset-Summe (E-Motoren ohne Leistung);3 × MTU-Gensets + Brennstoffzelle 3 MW;;;hs;17;indication;;;Brennstoffzelle nicht modelliert (Rechnung zu hoch)
+9840178;Seven Seas;diesel_mech;indication;7178;indication;;2 × 3.589 kW;2 × MTU 20V 4000 M73L;;;hs;20;indication;;;Länge Repo 125 m vs. 109 m – Zuordnung prüfen
+9770270;Multiverse;diesel_electric;sourced;5116;sourced;5190;Genset-Summe 5.116 (scheepvaartwest) vs. 5.190 kW (SYT);Gensets 2 × CAT 3516C + 4 × CAT C18 + 2 Azimut-Pods;;;hs;16;indication;;;v_max SYT 16 vs. YB/YCF/BOAT 12 vs. 17,5
+9881627;Kismet;diesel_mech;indication;6400;sourced;;2 × 3.200 kW;2 × MTU 20V 4000 M73L;;;hs;18;indication;;;Hybrid mit E-Fahrmodus → als mechanisch gerechnet (Annahme R3)
+9865738;O3 (ex Shackleton);diesel_electric;indication;6021;indication;6021;Genset-Summe (keine E-Motor-Angabe);Gensets 3 × Wärtsilä 9L20C + 2 Pods;;unverified;;;;;;Wärtsilä 20: 900/1.000/1.200 rpm (Hersteller) → Klasse ungeklärt
+1002380;Lady Moura;diesel_mech;indication;10242;sourced;;2 × 5.121 kW;2 × Deutz TBD 510B V12;;;;22;indication;;;Drehzahl nicht gefunden → Standard
+6603012;Alexander;diesel_mech;indication;5924;indication;6002;R2 Leitquelle YB 2 × 2.962 kW vs. WP 2 × 3.001 kW;2 × MAN G10V-52/74MA;;unverified;;18;indication;;;Drehzahl nicht gefunden (vermutlich mittelschnell, offen)
+1009340;A;diesel_mech;indication;9000;sourced;;2 × 4.500 kW;2 × MAN 20RK280;1000;indication;hs;23;indication;;;1.000 rpm (YCF) → nach IMO HSD
+9857511;Launchpad;diesel_electric;indication;15816;indication;15816;Genset-Summe (keine E-Motor-Angabe);Gensets 4 × MTU 20V 4000 M93L;;;hs;24;indication;;;
+9692545;Andromeda;diesel_electric;sourced;5190;indication;5190;Genset-Summe SYT (YCF/WP abweichend);Gensets 2 × CAT 3516C + 4 × CAT C18;;;hs;16;indication;;;
+9865075;Liva O;diesel_electric;sourced;4400;sourced;6277;E-Fahrmotoren 2 × 2.200 kW / Genset 6.277 kW;Gensets 2 × Caterpillar + 3 × Zeppelin, 2 × RAMME-E-Motoren;;;hs;18;indication;;;
+9754032;Zoza (ex Luminosity);diesel_electric;sourced;4400;indication;5316;E-Fahrmotoren 2 × 2.200 kW (YB) / Genset 5.316 kW (SYT);Gensets 6 × CAT C32 + 2 ABB Azipod;;;hs;16;indication;;;Batterie (Indiz) nicht modelliert
+1010222;Luna;diesel_electric;indication;13760;indication;13950;Genset-Summe SYT (YH 13.950, WP 11.000 kW);Gensets 5 × MTU 16V 4000 M40B + 2 × 12V 4000 M53;;;hs;22;indication;;;
+9817896;Infinity;diesel_mech;indication;5742;sourced;5757;2 × 2.871 kW (SYT) vs. 2 × 3.860 hp (YB);2 × MTU 16V 4000 M73L;2050;indication;hs;18.5;indication;;;
+1006829;Le Grand Bleu;diesel_mech;indication;6816;sourced;;2 × 3.408 kW;2 × Deutz SBV 16M 628;1000;indication;hs;17;indication;;;Drehzahl wie Tatoosh (gleiches Modell) / v_max SYT/WP 17 vs. YB/BOAT 19
+1000667;Atlantis II;diesel_mech;indication;7158;sourced;;2 × 3.579 kW;2 × Pielstick (Modell nicht genannt);;unverified;;14;indication;;;Pielstick-Modell offen → Klasse ungeklärt / v_max SYT 14 vs. YB/YCF 15
+8977273;Pelorus;diesel_mech;indication;7904;indication;;2 × 3.952 kW (SYT);2 × Wärtsilä 12V26;;unverified;;20;indication;;;Wärtsilä 26: Drehzahl auf Herstellerseite nicht genannt
+1000320;Navtilvs;diesel_mech;indication;6502;indication;;2 × 3.251 kW;2 × SEMT Pielstick (Modell nicht genannt);;unverified;;14;indication;;;
+9855276;Ahpo (ex Lady Jorgia);diesel_mech;indication;6490;indication;;Leitquelle SYT 2 × 3.245 kW (boote-magazin 3.200, Abstand 1,4 %);2 × MTU 20V 4000 M73L;;;hs;18;indication;;;
+9526758;Al Raya;diesel_mech;indication;8962;indication;10400;R2 Leitquelle SYT 2 × 4.481 kW vs. YB 10.400 kW;2 × MTU 16V 1163 TB73L;1230;indication;hs;21;indication;;;YB: kombiniert mechanisch/dieselelektrisch
+9571105;Radiant;diesel_mech;indication;10544;indication;13000;R2 Leitquelle SYT 2 × 5.272 kW vs. WP 2 × 8.715 hp;2 × MTU 16V 1163 TB73L;;;hs;21;indication;;;
+9818797;Olivia O;diesel_electric;sourced;3200;indication;3938;E-Fahrmotoren 2 × 1.600 kW (YB, als E-Motor gelesen: Annahme) / Genset 3.938 kW (YH);Gensets 2 × CAT 3516C-HD + Pods;;;hs;15.8;indication;;;v_max YB/YCF 15,8 vs. YH/BOAT 16,5
+1013016;Alaiya;diesel_mech;indication;7402;sourced;;2 × 3.701 kW;2 × MTU 20V 4000 M73L;;;hs;18;indication;;;
+9921491;Leviathan;diesel_electric;sourced;6000;indication;6000;Genset-Summe 2 × 3.000 kW (YB / Anzahl laut SYT 5);Gensets MTU 16V 4000 M25S;;;hs;17.5;indication;;;
+1012957;Aviva;diesel_mech;sourced;5840;indication;;R2 Leitquelle SYT 2 × 2.920 kW (YB 2 × 2.880 kW);2 × MTU 16V 4000 M73(L) + E-Motoren;2050;indication;hs;20;indication;;;Werft: Hauptmaschinen mechanisch, E-Motoren bis 11 kn
+9967093;DreAMBoat;diesel_mech;indication;7178;indication;;2 × 3.589 kW (SYT);2 × MTU 20V 4000 M73L;;;hs;21;indication;;;Antriebsart widersprüchlich, Annahme mechanisch + Batterie im Bordnetz
+1012983;Ambassador;diesel_mech;unverified;8000;sourced;;Werft Feadship 2 × 4.000 kW (YCF 2 × 2.870 hp vermutlich Gensets);2 × Hauptmaschinen 4.000 kW (Hersteller nicht genannt);1800;sourced;hs;19;sourced;;;Antriebsart ungeklärt → Standard / 6 separate Gensets (Werft)
+1012921;Bravo Eugenia;diesel_mech;indication;2880;indication;3780;Diesel 2 × 1.440 kW (YB), ohne E-Motoren 2 × 450 kW;2 × MTU 16V 2000 M72 + 2 E-Motoren;;;hs;18.5;indication;;;Hybrid mit E-Motoren an den Wellen → als mechanisch gerechnet (Annahme R3)
+1012610;Kaos;diesel_mech;indication;7200;sourced;;2 × 3.600 kW;2 × MTU 20V 4000 M73L;2050;indication;hs;18.5;indication;;;
+1010167;AV;diesel_mech;indication;7958;indication;;R2 Leitquelle SYT 2 × 3.979 kW (YCF 4.600 hp ohne Bezug);2 × MTU 16V 595 TE70;1750;indication;hs;19;indication;;;
+1013004;IJE;diesel_mech;indication;5760;indication;;2 × 2.880 kW (YB-Datenblatt / hp-Angabe 3.191 unstimmig);2 × MTU 16V 4000 M73L;2050;indication;hs;20;indication;;;elektrischer Pumpjet als Zusatzantrieb
+9761762;Mar;diesel_electric;sourced;5600;indication;7088;E-Fahrmotoren 2 × 2.800 kW (Lesart) / Genset 7.088 kW (SYT);Gensets 8 × CAT C32 + 2 Pods;;;hs;18.5;indication;;;
+9657545;I Dynasty;diesel_electric;sourced;7080;sourced;7080;Genset-Summe (E-Motoren ohne Leistung);Gensets 2 × Bergen C25:33L8 + 3 × Caterpillar;;unverified;;17;indication;;;Bergen C25:33: 720/750 oder 900/1.000 rpm → Klasse ungeklärt
+1012531;Amadea;diesel_mech;indication;8600;sourced;;2 × 4.300 kW;2 × MTU 20V 4000 M93L;1300;indication;hs;20;indication;;;
+9740251;Quantum Blue;diesel_mech;indication;7410;sourced;;2 × 3.705 kW;2 × MTU 20V 4000 M93L;2100;indication;hs;21;indication;;;v_max SYT 21 vs. YB/YCF/BOAT 22
+8708646;Dubawi;diesel_mech;indication;5116;sourced;;Leitquelle SYT 2 × 2.558 kW (YB 2 × 2.520 kW);2 × MAN B&W Alpha 12V28/32;775;indication;ms;15;indication;;;
+9949869;Moonrise;diesel_mech;indication;7178;indication;;R2 Leitquelle SYT 2 × 3.589 kW vs. YCF 2 × 3.200 hp;2 × MTU 20V 4000 M73L;;;hs;22.5;indication;;;v_max YCF 22,5 vs. YB 19,5 (Gleichrang → höherer Wert)
+1012490;Black Pearl;sail_aux;sourced;2160;indication;2982;R2: SYT-Text 2 × 1.080 kW vs. SYT-Tabelle 2 × 1.491 kW, geringerer Wert;2 × Diesel + 2 E-Motoren (Rekuperation);;;hs;17.5;indication;;;v_max unter Motor
+9816232;Reverie (ex Moonrise);diesel_mech;sourced;7080;sourced;7178;Werft Feadship 2 × 3.540 kW (SYT 3.589);2 × MTU 20V 4000 M73L;2050;sourced;hs;18.5;sourced;;;v_max SYT 18,5 (Repo) vs. YB 19,5
+1010387;Vava II;diesel_mech;indication;8410;sourced;;2 × 2.465 + 2 × 1.740 kW;4 × MTU 4000 (16V/12V M71);;;hs;19;indication;;;
+1009479;Mayan Queen IV;diesel_mech;indication;7604;indication;;Leitquelle SYT 2 × 3.802 kW (YB 3.750 kW, eigene hp-Angabe passt zu SYT);2 × MAN B&W 12VRK270;1000;indication;hs;22;indication;;;1.000 rpm (YB) → nach IMO HSD
+9927940;Ulysses;diesel_mech;indication;5120;sourced;;Werft Feadship 2 × 2.560 kW;2 × MTU 16V 4000 M65L;1800;sourced;hs;18;indication;;;
+8994001;Carinthia VII;diesel_mech;sourced;29604;sourced;;4 × 7.401 kW (9.925 hp mech. = 10.064 PS);4 × MTU 20V 1163 TB93;;;hs;25;indication;;;Repo bisher 30.019 kW
+1012098;Symphony;diesel_mech;indication;10240;sourced;;Werft Feadship 4 × 2.560 kW;4 × MTU 16V 4000 M73;1970;sourced;hs;22;indication;;;Hybrid nur laut SuperYachtFan (nicht bestätigt)
+1006245;NEOM (ex H3);diesel_mech;indication;5646;sourced;5664;seit 2023: 2 × 2.823 (YB) bzw. 2.832 kW;2 × MTU 16V 4000 M73L;;;hs;18;indication;;;Remotorisierung 2023 vor Messzeitraum → aktueller Zustand (R5)
+9179830;Attessa IV;diesel_mech;indication;9836;sourced;9844;2 × 4.918–4.922 kW;2 × Wärtsilä 12V32E;750;indication;ms;25;indication;;;v_max SYT 25 vs. YB 22
+9869758;Norn;diesel_mech;indication;5742;sourced;;2 × 2.871 kW;2 × MTU 16V 4000 M73L;;;hs;18;indication;;;
+1011331;Madame Gu;diesel_mech;indication;14400;sourced;;Werft Feadship 4 × 3.600 kW;4 × MTU 20V 4000 M73L;2050;sourced;hs;24;indication;;;
+1009120;Pure;diesel_mech;indication;4026;sourced;;2 × 2.013 kW;2 × MTU (Modell ungeklärt);;;hs;17;indication;;;möglicher Umbau 2026 (Indiz) – valid_from setzen, sobald belegt
+8975940;Limitless;diesel_mech;unverified;10836;sourced;10840;2 × CAT 3616 à 5.418–5.420 kW;2 × CAT 3616 DITA + 2 × CAT 3516B;1000;indication;hs;23;indication;;;Antriebsart widersprüchlich → Standard / v_max 23 nach Umbauten (YB), vorher 25
+9288203;Queen Miri;diesel_mech;indication;4116;indication;;SYT 2 × 2.058 kW – vor oder nach Motorwechsel unklar;2 × MTU (seit Refit 2016: 20V 4000 M93L);;;hs;17;indication;;;Leistung nach Refit vermutlich höher (offen)
+1012828;Sophia;diesel_mech;indication;4480;sourced;;Werft Feadship 2 × 2.240 kW;2 × MTU 16V 4000 M63L;1800;sourced;hs;17;indication;;;
+1012000;Whisper;diesel_mech;indication;4056;sourced;;2 × 2.028 kW;2 × Caterpillar 3516C-HD;1600;indication;hs;16;indication;;;v_max SYT 16 vs. YB-Tabelle/BOAT 17
+9332406;Ice;diesel_electric;sourced;5000;indication;6832;E-Fahrmotoren 2 × 2.500 kW (YB) / Genset 6.832 kW (SYT);Gensets 8 × Deutz TBD616 V16 + 2 Azipods;;;hs;18.6;indication;;;Validierung: 16–17 t/24 h Marschfahrt
+9807956;CC Summer;diesel_mech;indication;5120;sourced;;2 × 2.560 kW;2 × MTU 16V 4000 M73;;;hs;18;indication;;;
+1006336;Tatoosh;diesel_mech;indication;6488;sourced;;2 × 3.244 kW;2 × Deutz SBV 16M 628;1000;indication;hs;16;indication;;;v_max SYT 16 vs. YB/YH 19
+9835707;Bliss;diesel_mech;sourced;4480;sourced;;Werft Feadship 2 × 2.240 kW;2 × Caterpillar 3516E;1800;sourced;hs;17;indication;;;Hybrid mit dieselelektrischem Fahrmodus → als mechanisch gerechnet (Annahme R3)
+9288215;Moonlight II;diesel_mech;indication;8120;indication;;R2 Leitquelle SYT 2 × 4.060 kW vs. Burgess 2 × 2.750 hp;2 × Caterpillar 3606;;unverified;;13;indication;;;CAT 3606: 900–1.000 rpm (Datenblatt) → Klasse ungeklärt
+9840829;O'Pari;diesel_mech;indication;5050;sourced;;2 × 2.525 kW;2 × Caterpillar 3516C-HD;;;hs;20;indication;;;boote-magazin nennt „Gensets“ (vermutlich Fehlbezeichnung)
+9798246;Defy (ex Viva);diesel_mech;sourced;5760;sourced;;Werft Feadship 2 × 2.880 kW;2 × MTU 16V 4000 M73L;2050;sourced;hs;20;indication;;;Hybrid: mechanisch für hohe Fahrt (Annahme R3) / Tier-III-Katalysator + DPF
+1013121;Lady S;diesel_mech;indication;4700;sourced;;Werft Feadship 2 × 2.350 kW;2 × Caterpillar 3516C;1800;sourced;hs;17.5;indication;;;
+9377456;Eos;sail_aux;sourced;1740;indication;3480;Werft: ein MTU à 1.740 kW (SYT/yacht.de 2 × 1.740 kW);MTU (Modell nicht genannt);;;hs;16;indication;;;v_max nicht nach Motor/Segel getrennt
+9804332;Artefact;diesel_electric;sourced;6016;indication;6016;Genset-Summe (keine E-Motor-Angabe);Gensets 2 × CAT 3516C + 2 × CAT C18 + 2 Azipods;;;hs;17.8;indication;;;SCR vorhanden
+1009962;Aquila;diesel_mech;indication;4930;sourced;;2 × 2.465 kW;2 × MTU 16V 4000 M71;;;hs;17;indication;;;
+1012268;Royal Romance;diesel_mech;indication;4480;sourced;;Werft Feadship 2 × 2.240 kW;2 × MTU 16V 4000 M63L;1800;sourced;hs;18.5;indication;;;
+1012323;Lionheart;diesel_mech;unverified;7088;indication;;2 × 3.544 kW (nur SYT, Modell C32 passt nicht dazu);2 × Caterpillar;;;hs;18;indication;;;Antriebsart widersprüchlich → Standard / Leistung zweifelhaft
+1012866;Aquarius;diesel_mech;indication;4480;sourced;;Werft Feadship 2 × 2.240 kW;2 × MTU 16V 4000 M63L;1800;sourced;hs;17;indication;;;
+1012086;Draak;diesel_mech;indication;7200;sourced;;2 × 3.600 kW;2 × MTU 20V 4000 M73L;;;hs;19.5;indication;;;laut BOAT Umbau zum Begleitschiff (prüfen)
+1012311;Lady Lara;diesel_mech;indication;3862;indication;4480;R2 Leitquelle SYT 2 × 1.931 kW vs. YB 2 × 2.240 kW;2 × MTU 16V 4000 M63L;;;hs;17;indication;;;
+1009417;Nahlin;diesel_electric;sourced;3680;sourced;3732;Genset-Summe (PS vs. hp: 2 × 1.840 bzw. 1.866 kW);Gensets 2 × MTU 16V 4000 M60;1800;indication;hs;18;indication;;;
+1013066;Dar;diesel_mech;indication;7200;sourced;;2 × 3.600 kW;2 × MTU 20V 4000 M73L;2050;indication;hs;20;indication;;;
+1010284;Phoenix 2;diesel_mech;indication;4056;indication;;Leitquelle SYT 2 × 2.028 kW (YB/YCF M61 2 × 2.000 kW, Abstand 1,4 %);2 × MTU 16V 4000;;;hs;18;indication;;;
+1011202;Nirvana;diesel_mech;indication;7200;sourced;7204;2 × 3.600 kW;2 × MTU 20V 4000 M73L;2050;indication;hs;20;indication;;;v_max SYT 20 vs. YB/YCF/BOAT 19,5
+9800087;Lonian;diesel_mech;sourced;5120;sourced;;Werft Feadship 2 × 2.560 kW;2 × MTU 16V 4000 M73;1970;sourced;hs;18.5;indication;;;Batterie-Hybrid (Corvus 441 kWh) nicht modelliert
+9384552;Maltese Falcon;sail_aux;sourced;2960;indication;3048;R2: yacht.de 2 × 1.480 kW vs. YB 2 × 1.524 kW (intern inkonsistent);2 × Deutz TBD 620 V12;1800;indication;hs;19.5;indication;;;v_max unter Motor / Validierung 350 l/h Marschfahrt
+1008449;Nero;diesel_mech;indication;3420;sourced;3478;2 × 1.710–1.739 kW;2 × MaK 9M20;1000;indication;hs;17;indication;;;1.000 rpm (YB) → nach IMO HSD / Länge Repo 80,83 vs. 90,1 m prüfen
+9967847;J7 Explorer;diesel_mech;indication;5192;indication;;Leitquelle SYT 2 × 2.596 kW (YB/YCF unstimmig);2 × Yanmar 8EY26W;750;indication;ms;18;indication;;;Drehzahl aus Modellreihe EY26W (Herstellerseite 6EY26W: 750 rpm)
