@@ -41,14 +41,14 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 39;O3 (ex Shackleton);9865738;538072318;107.0;6561;2026;private;sourced;34;59;Shackleton umbenannt in O3 → Dublette
 40;Lady Moura;1002380;309221000;105.0;6359;1990;private;sourced;35;64;
 41;Alexander;6603012;215838000;118.0;5933;1966;state_royal;sourced;38;35;bei VF als Passagierschiff geführt
-42;A;1009340;538071242;118.0;5959;2008;private;sourced;36;37;bei VF als MYA
+42;A;1009340;533133134;118.0;5959;2008;private;sourced;36;37;umbenannt in MYA, Flagge Malaysia, MMSI 533133134 mit Meldung 2026-07 (VesselFinder, MyShipTracking), alte MMSI 538071242 letzte Meldung 2022-01 – Prüfliste 2026-11-01
 43;Launchpad;9857511;538072122;118.0;5528;2024;private;sourced;43;36;MMSI aus fleet.js bestätigt
 44;Andromeda;9692545;319879000;107.4;5937;2015;private;sourced;37;58;
 45;Liva O;9865075;215014000;118.0;5054;2023;private;sourced;48;38;bei VF als LIVA
 46;Zoza (ex Luminosity);9754032;319160100;105.0;5844;2022;private;sourced;39;65;heute ZOZA (Superyacht Times)
 47;Luna;1010222;538071095;114.0;5655;2010;private;sourced;40;47;zweite LUNA (IMO 1013066) ist andere Yacht
 48;Infinity;9817896;319208000;117.0;4978;2022;private;unverified;51;40;mehrere INFINITY – über Länge/Baujahr zugeordnet
-50;Le Grand Bleu;1006829;511100718;108.0;5556;2000;private;sourced;42;57;
+50;Le Grand Bleu;1006829;533133683;108.0;5556;2000;private;sourced;42;57;Flagge Malaysia, MMSI 533133683 mit Meldung 2026-10 (VesselFinder), alte MMSI 511100718 letzte Meldung 2025-08 – Prüfliste 2026-11-01
 51;Atlantis II;1000667;310013000;116.0;3243;1981;private;sourced;85;43;
 52;Pelorus;8977273;319328900;115.0;5403;2003;private;conflict;44;46;KONFLIKT MMSI: VesselFinder 319029200 vs. MaritimeOptima 319328900
 53;Navtilvs;1000320;248652000;116.0;3413;1973;private;sourced;80;44;
@@ -90,7 +90,7 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 93;Ice;9332406;631010093;90.08;3268;2005;private;sourced;84;103;MMSI 631 = Äquatorialguinea
 94;CC Summer;9807956;538071410;95.0;3091;2019;private;sourced;87;84;
 95;Tatoosh;1006336;319801000;92.1;3229;2000;private;sourced;86;94;bei VF als MY TATOOSH
-96;Bliss;9835707;538071599;95.0;2983;2021;private;unverified;98;86;mehrere BLISS – IMO 9835707 per Länge prüfen
+96;Bliss;9835707;538071599;95.0;2983;2021;private;sourced;98;86;MMSI 538071599 mit aktueller Meldung und Länge 95 m bestätigt (MaritimeOptima, abgerufen 2026-11-01)
 97;Moonlight II;9288215;215934000;91.4;3056;2004;private;sourced;88;98;
 98;O'Pari;9840829;215745000;94.0;2743;2020;private;sourced;109;88;
 99;Defy (ex Viva);9798246;319179500;94.0;2999;2021;private;sourced;91;89;MaritimeOptima führt dieselbe IMO/MMSI als VIVA → Viva umbenannt in Defy, Dublette

@@ -9,3 +9,9 @@
 # last_seen: letzte bekannte AIS-Meldung beim Pausieren (UTC, ISO 8601; leer = keine bekannt)
 # next_check: Wiedervorlage für die Web-Recherche (YYYY-MM-DD)
 imo;name;action;reason;since;last_seen;next_check;source_url;note
+9785108;Crescent;pause;seized;2022-03-16;;2026-12-01;https://www.elnacional.cat/en/world/fbi-search-russian-oligarch-megayacht-port-tarragona_1043316_102.html;seit 16.03.2022 im Hafen Tarragona festgesetzt (Stand Artikel 2023, neuere Bestätigung fehlt)
+9865738;O3 (ex Shackleton);watch;in_port;2026-11-01;;2026-12-01;https://www.vesselfinder.com/vessels/details/9865738;meldet unter 538072318 (festgemacht, westl. Mittelmeer), MST-Datensatz 211190430 veraltet (Probefahrt-MMSI)
+1013016;Alaiya;watch;in_port;2026-11-01;;2026-12-01;https://maritimeoptima.com/public/vessels/pages/imo:1013016/mmsi:319165800/ALAIYA.html;meldet unter 319165800 (festgemacht Cartagena), MST-Datensatz 211803140 (TIS) von 2019 veraltet
+9865075;Liva O;watch;other;2026-11-01;;2026-12-01;https://maritimeoptima.com/public/vessels/pages/imo:9865075/mmsi:215014000/LIVA_O.html;MMSI 215014000 (Malta) laut MaritimeOptima aktiv, MST-Datensatz 211881400 (CELERIUS) von 2023 veraltet, Datum der letzten Meldung ungeklärt
+9835707;Bliss;watch;imo_missing;2026-11-01;;2026-12-01;https://maritimeoptima.com/public/vessels/pages/imo:9835707/mmsi:538071599/BLISS.html;IMO bei MST nicht hinterlegt, meldet unter 538071599 (festgemacht, Pazifik vor Costa Rica)
+1010387;Vava II;watch;imo_missing;2026-11-01;;2026-12-01;https://maritimeoptima.com/public/vessels/pages/imo:1010387/mmsi:319808000/VAVA_2.html;IMO bei MST nicht hinterlegt, meldet unter 319808000 als VAVA 2 (festgemacht Triest)

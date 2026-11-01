@@ -12,6 +12,7 @@ const credits = require('../lib/credits');
 const planner = require('../lib/planner');
 const mst = require('../providers/myshiptracking');
 const { YACHTS } = require('../fleet');
+const tracking = require('../lib/tracking');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false } });
@@ -43,7 +44,8 @@ async function logRows() {
   return (await pool.query(`SELECT kind, ids, credits, http_status, note FROM credit_log WHERE dataset = $1 ORDER BY id`, [DS])).rows;
 }
 
-before(async () => { await migrate(pool); await clean(); });
+// Vom echten Tracking-Zustand entkoppeln: die Erwartungen rechnen mit der ganzen Flotte als aktiv
+before(async () => { tracking.setStateForTest([]); await migrate(pool); await clean(); });
 after(async () => { global.fetch = realFetch; await clean(); await pool.end(); });
 
 test('K1: zweiter Teilabruf scheitert → Teilergebnis gespeichert, je Teilabruf ein credit_log-Eintrag', async () => {
