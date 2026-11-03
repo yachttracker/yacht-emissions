@@ -24,7 +24,21 @@ nie Anbieter-Abrufe aus.
 | `dev/serve.js`, `dev/mock/` | Lokaler Dev-Server mit erfundenen Daten (ohne Datenbank) |
 | `test/api.test.js` | API-Tests (node:test), laufen in der CI gegen Postgres |
 
-## Öffentliche API
+## Sichtbarkeit (öffentlich / privat)
+Schalter per Railway-Variable, ohne Codeänderung (`lib/access.js`):
+
+| `SITE_ACCESS` | Wirkung |
+|---|---|
+| `private` (Standard, auch wenn nicht gesetzt) | Dashboard, API und Admin nur mit Zugang; `/health` bleibt offen |
+| `public` | alles öffentlich wie bis 03.11.2026 |
+
+Zugang im privaten Modus mit `SITE_PASSWORD` oder `ADMIN_TOKEN`: Browser-Anmeldung
+(Benutzername beliebig), Link `…/?access=<Passwort>` (setzt ein Cookie für 30 Tage) oder
+Kopfzeile `x-site-access` für Skripte. Passwort ändern = Variable ändern, alte Cookies
+verfallen damit. Grund: Die API-Bedingungen von MyShipTracking erlauben nur interne
+Nutzung (Terms 4.2/4.3); öffentlich erst nach schriftlicher Klärung.
+
+## API
 | Endpunkt | Inhalt |
 |---|---|
 | `GET /api/emissions/summary` | Summen je Yacht. Parameter: `period=day\|week\|month\|year`, `mode=rolling\|calendar`, `from`/`to` (`YYYY-MM-DD`, UTC, `to` inklusive). Ohne `meta` wie bisher ein Array; `meta=1` → `{ meta, rows }` mit Fenster und Datenbereich (`data_from`, `data_to`). |

@@ -99,7 +99,7 @@ const yesterday = () => {
 
 before(async () => {
   server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-    env: { ...process.env, PORT: String(PORT), AIS_DATASET: DATASET, ADMIN_TOKEN: TOKEN, AIS_PROVIDER: 'none' },
+    env: { ...process.env, PORT: String(PORT), AIS_DATASET: DATASET, ADMIN_TOKEN: TOKEN, AIS_PROVIDER: 'none', SITE_ACCESS: 'public' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';

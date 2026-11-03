@@ -55,6 +55,10 @@ const requireAdmin = createAdminGuard();
 const apiLimiter = rateLimit(createLimiter({ windowMs: 60000, max: Number(process.env.API_RATE_PER_MIN) || 240 }));
 
 app.use(securityHeaders);
+// Sichtbarkeit: SITE_ACCESS=public | private (Standard private), Details lib/access.js.
+// Steht vor Frontend, API und Admin, damit im privaten Modus nichts ohne Zugang ausgeliefert wird.
+const { createSiteGate, siteMode } = require('./lib/access');
+app.use(createSiteGate());
 app.use(cors());
 app.use(express.json({ limit: '20kb' }));
 // Statisches Frontend aus public/ (index.html, admin/, js/, css/, vendor/)
@@ -491,6 +495,7 @@ app.use(['/api', '/admin/api'], (req, res) => res.status(404).json({ error: 'not
 
 setupWithRetry().then(() => {
  // connectAIS();
+  console.log(`[ACCESS] Seite ${siteMode() === 'public' ? 'ÖFFENTLICH (SITE_ACCESS=public)' : 'PRIVAT (nur mit Zugang; öffnen mit SITE_ACCESS=public)'}`);
   if (!process.env.ADMIN_TOKEN) console.log('[ADMIN] ADMIN_TOKEN nicht gesetzt – Admin-Seite und Admin-API deaktiviert');
   else if (process.env.ADMIN_TOKEN.length < 24) console.warn('[ADMIN] ADMIN_TOKEN kürzer als 24 Zeichen – bitte länger wählen');
   startScheduler();
