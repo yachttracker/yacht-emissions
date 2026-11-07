@@ -630,7 +630,7 @@ function updateDetailFigures(panel, r) {
   const m = metricDef();
   for (const mm of METRICS.filter(x => x.enabled)) box.append(fig(mm.label, fmt.mass(r[mm.field]).text, null, mm.key === m.key));
   box.append(
-    fig('Coverage', fmt.pct(r.coverage), `${fmt.hours(r.coverage_h)} of ${fmt.hours(r.period_h)}`),
+    fig('Coverage', fmt.pct(r.coverage), `${fmt.hours(r.coverage_h)} of ${fmt.hours(r.period_h)}${r.coverage_bridged_h > 0 ? `, incl. ${fmt.hours(r.coverage_bridged_h)} lying time bridged` : ''}`),
     fig('Last report', fmt.ago(r.last_seen), fmt.dateTime(r.last_seen)));
   const rk = panel.querySelector('.detail-rank');
   if (rk) rk.textContent = r.rank ? `Rank ${r.rank} of ${state.summary ? state.summary.rows.length : '–'} by ${m.label}` : 'Not ranked in this period';
@@ -669,7 +669,7 @@ function renderStatus() {
   const meta = state.fleet ? state.fleet.meta : null;
   const active = st && st.provider && st.provider !== 'none';
   const lastUpdate = (st && st.last_30_days && st.last_30_days.last_update) || (meta && meta.data_to);
-  const providerName = { myshiptracking: 'MyShipTracking', mock: 'mock provider' }[st && st.provider] || (st && st.provider);
+  const providerName = { datalastic: 'Datalastic', myshiptracking: 'MyShipTracking', mock: 'mock provider' }[st && st.provider] || (st && st.provider);
   root.append(
     h('div', { class: 'status-items' },
       h('span', { class: `status-dot ${active ? 'is-on' : 'is-off'}` }, active ? `Data feed: ${providerName}` : 'Data feed: not active yet'),
@@ -681,6 +681,9 @@ function renderStatus() {
       h('ul', {},
         h('li', {}, 'Positions come from AIS ship tracking, bought from a commercial data provider. Visitors of this page never trigger provider requests.'),
         h('li', {}, `For every report an emission rate is estimated from speed and navigation status with a simplified engine model (calc version ${state.health ? state.health.calc_version : '–'}). A rate holds until the next report, for at most ${(state.summary && state.summary.meta.max_gap_hours) || 7} h for live reports and ${(state.summary && state.summary.meta.max_gap_hours_history) || 1} h for track history.`),
+        (state.summary && state.summary.meta.stationary_max_gap_hours > 0)
+          ? h('li', {}, `Track history only records position changes. If a yacht lies at the same spot (below ${state.summary.meta.stationary_v_kn} kn, within ${state.summary.meta.stationary_dist_sm} nm) before and after a gap, the gap counts as lying time for at most ${state.summary.meta.stationary_max_gap_hours} h.`)
+          : null,
         h('li', {}, 'Coverage is the share of the selected period with reports. Totals are not extrapolated to time without reports.'),
         h('li', {}, 'Owner names are only shown when a cited source backs the ownership, and only where the site owner has made names visible.'),
         h('li', {}, 'Climate impact beyond CO₂ (radiative forcing of NOₓ, sulphur aerosols and other effects) is not shown yet; the method is still being defined.'),

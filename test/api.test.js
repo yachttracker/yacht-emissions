@@ -18,6 +18,7 @@ const TOKEN = 'ci-admin-token-0123456789abcdef';
 const DATASET = 'citest';
 const A = '319225400';   // Koru (fleet.js)
 const B = '538072122';   // Launchpad (fleet.js)
+const C = '319112900';   // Amadea (data/fleet.csv) – Liegezeit-Regel
 const OWNER_A = 'Testa Fictional';
 const OWNER_B = 'Hidden Unverified';
 const SOURCE_A = 'https://example.org/ownership-proof-a';
@@ -92,6 +93,7 @@ async function send(method, p, body, token = TOKEN) {
   return { status: r.status, json: await r.json().catch(() => null) };
 }
 
+const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 const yesterday = () => {
   const d = new Date(Date.now() - 86400000);
   return d.toISOString().slice(0, 10);
@@ -139,6 +141,18 @@ before(async () => {
       FROM generate_series(0, 23) g`, [B, DATASET, d, LEGACY]);
   await pool.query(`INSERT INTO vessel_days (dataset, mmsi, day, history_status) VALUES ($1, $2, $3::date, 'done')`,
     [DATASET, B, d]);
+  // Yacht C: vor 40 Tagen (außerhalb der Referenzfenster ≤ 30 Tage) Historie nur mit Positionsänderungen
+  // wie bei Datalastic: 06:00 Anker, 16:00 gleicher Ort, 16:30 Fahrt, 17:00 neuer Ort, 20:00 anderer Ort
+  await pool.query(`
+    INSERT INTO positions (mmsi, name, flag, length_m, latitude, longitude, speed_knots,
+                           co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp, source, dataset)
+    SELECT $1, 'Amadea', '🇰🇾', 106, v.lat, v.lon, v.sog, v.co2, 1, 0.1, v.co2 / 3.206,
+           (($3::date)::timestamp AT TIME ZONE 'UTC') + make_interval(mins => v.m), 'history', $2
+      FROM (VALUES (360, 43.0, 7.0, 0.0, 30.0), (960, 43.0, 7.0005, 0.2, 30.0), (990, 43.1, 7.1, 10.0, 500.0),
+                   (1020, 43.2, 7.2, 0.0, 30.0), (1200, 44.0, 8.0, 0.0, 30.0)) v(m, lat, lon, sog, co2)`,
+  [C, DATASET, daysAgo(40)]);
+  await pool.query(`INSERT INTO vessel_days (dataset, mmsi, day, history_status) VALUES ($1, $2, $3::date, 'done')`,
+    [DATASET, C, daysAgo(40)]);
 });
 
 after(async () => {
@@ -191,6 +205,21 @@ test('freies Fenster: Historie hat Vorrang, Live-Punkte des Tages zählen nicht'
   assert.equal(b.category, 'yacht');
   assert.equal(b.flag_code, 'MH');
   assert.ok(r.json.meta.data_from && r.json.meta.data_to, 'Datenbereich vorhanden');
+});
+
+test('Liegezeit-Regel: Lücke zwischen zwei Punkten am selben Ort wird überbrückt, Fahrt nicht', async () => {
+  const d = daysAgo(40);
+  const r = await get(`/api/emissions/summary?from=${d}&to=${d}&meta=1`);
+  assert.equal(r.status, 200);
+  assert.equal(r.json.meta.stationary_max_gap_hours, 24);
+  const c = r.json.rows.find(z => z.mmsi === C);
+  assert.ok(c, 'Yacht C vorhanden');
+  // 06–16 Uhr Liegezeit 10 h × 30 + 0,5 h × 30 + 0,5 h × 500 + 1 h × 30 (neuer Ort, nicht überbrückt) + 1 h × 30
+  assert.equal(c.co2_kg_total, 625);
+  assert.equal(c.coverage_h, 13);
+  assert.equal(c.coverage_bridged_h, 9, 'davon 9 h nur durch die Regel');
+  const a = r.json.rows.find(z => z.mmsi === A);
+  assert.ok(!a, 'A hat an dem Tag keine Daten');
 });
 
 test('neue Zeitfenster: year und calendar', async () => {

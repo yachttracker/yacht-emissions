@@ -24,6 +24,43 @@ nie Anbieter-Abrufe aus.
 | `dev/serve.js`, `dev/mock/` | Lokaler Dev-Server mit erfundenen Daten (ohne Datenbank) |
 | `test/api.test.js` | API-Tests (node:test), laufen in der CI gegen Postgres |
 
+## AIS-Anbieter
+`AIS_PROVIDER` = `none` (Standard, kein Abruf) | `datalastic` | `myshiptracking` | `mock`.
+Adapter in `providers/`; die Abruflogik (`lib/planner.js`) ist anbieterneutral.
+
+### Datalastic (Starter, 20.000 Credits/Monat)
+Kosten laut [API-Doku](https://docs.datalastic.com/) (abgerufen 2026-11-07): Bulk 1 Credit je gefundener
+Yacht (≤ 100 je Abfrage), Historie 2 Credits je Kalenderdatum mit Daten (leere Daten kostenlos, ≤ 30 Tage
+je Abfrage, Daten seit 10.08.2021). Die Historie enthält nur Positionsänderungen; Liegezeiten überbrückt
+die Liegezeit-Regel der Zeitintegration (`STATIONARY_*`, siehe unten).
+
+Regel (Variante B, 2026-11-07): Historie für jede Yacht und jeden Tag, Live-Bulk nur 2×/Tag als
+Lebenszeichen, Rest in den Rückwärtsabruf. Abfragen über die IMO (`DL_ID_TYPE=imo`).
+Planung 108 Yachten, 31 Tage: 6.696 Historie + 6.696 Live = 13.392 Credits (67 %).
+
+Railway-Variablen für den Umstieg:
+
+| Variable | Wert |
+|---|---|
+| `AIS_PROVIDER` | `datalastic` |
+| `DL_API_KEY` | Schlüssel aus dem Datalastic-Profil |
+| `CREDIT_MONTH_BUDGET` | `20000` |
+| `CREDIT_DAILY_CAP` | `800` (Regelbetrieb ≈ 540/Tag; Rückwärtsabruf zählt nicht zum Tageslimit) |
+| `CREDIT_PERIOD_START_DAY` | Tag des Kaufs (Abrechnungszyklus) |
+| `POLL_HOURS_UTC` | `9,21` |
+| `HISTORY_BACKFILL_DAYS` / `HISTORY_BACKFILL_FROM` | z. B. `2000` / `2025-01-01` |
+| entfernen | `PROVIDER_TRIAL`, `HISTORY_MAX_DAYS`, `MST_API_KEY` |
+
+Optional: `DL_ID_TYPE` (`imo` | `mmsi`), `DL_HISTORY_TO_EXCLUSIVE` (`true`, falls `to` exklusiv ist;
+im Trial am Header `X-Request-Cost` prüfen), `DL_LOG_RAW` (`false` schaltet das einmalige Rohantwort-Log ab),
+`DL_TIMEOUT_MS`.
+
+### Liegezeit-Regel (Zeitintegration)
+Liegt eine Yacht vor und nach einer Lücke langsamer als `STATIONARY_V_KN` (2 kn) und am selben Ort
+(≤ `STATIONARY_DIST_SM`, 0,3 sm), gilt die Lücke als Liegezeit, höchstens `STATIONARY_MAX_GAP_HOURS`
+(24 h, Annahme). `0` schaltet die Regel ab. Die Summary weist den überbrückten Anteil als
+`coverage_bridged_h` aus.
+
 ## Sichtbarkeit (öffentlich / privat)
 Schalter per Railway-Variable, ohne Codeänderung (`lib/access.js`):
 

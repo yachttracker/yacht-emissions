@@ -11,6 +11,7 @@ const { loadConfig } = require('../lib/config');
 const credits = require('../lib/credits');
 const planner = require('../lib/planner');
 const mst = require('../providers/myshiptracking');
+const dl = require('../providers/datalastic');
 const { YACHTS } = require('../fleet');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL,
@@ -19,6 +20,8 @@ const DS = 'pltest';
 const realFetch = global.fetch;
 process.env.MST_API_KEY = 'test-key';
 process.env.MST_LOG_RAW = 'false';
+process.env.DL_API_KEY = 'test-key';
+process.env.DL_LOG_RAW = 'false';
 
 const cfgFor = (extra = {}) => ({
   ...loadConfig({ AIS_PROVIDER: 'myshiptracking', AIS_DATASET: DS, CREDIT_MONTH_BUDGET: '50000',
@@ -169,4 +172,56 @@ test('Rückwärtsabruf: Ausführung zählt zum Monat, nicht zum Tageslimit', asy
   const st = await credits.status(pool, cfg, 'myshiptracking', now);
   assert.equal(st.today_spent, byKind.history, 'Tageslimit ohne Rückwärtsabruf');
   assert.equal(st.month_spent, byKind.history + byKind.history_backfill, 'Monat mit Rückwärtsabruf');
+});
+
+// ── Datalastic (Starter 20.000, Variante B) ─────────────────────────────────
+const dlCfg = (extra = {}) => ({
+  ...loadConfig({ AIS_PROVIDER: 'datalastic', AIS_DATASET: DS, CREDIT_MONTH_BUDGET: '20000',
+    CREDIT_DAILY_CAP: '800', POLL_HOURS_UTC: '9,21' }),
+  ...extra,
+});
+function dlRespond(status, body, cost) {
+  const headers = new Headers({ 'content-type': 'application/json' });
+  if (cost !== undefined) headers.set('x-request-cost', String(cost));
+  return new Response(JSON.stringify(body), { status, headers });
+}
+
+test('Datalastic: Regel-Historie je Yacht ein Aufruf mit from = to, leere Tage kostenlos', async () => {
+  await clean();
+  const urls = [];
+  global.fetch = async (url) => {
+    const u = new URL(url); urls.push(u);
+    const day = u.searchParams.get('from');
+    const odd = Number(u.searchParams.get('imo') || u.searchParams.get('mmsi')) % 2;
+    if (!odd) return dlRespond(200, { data: { positions: [] }, meta: { success: true } }, 0);   // Liegetag ohne Änderung
+    return dlRespond(200, { data: { positions: [
+      { lat: 43.7, lon: 7.4, speed: 0.1, course: 0, heading: 0, last_position_UTC: `${day}T20:00:00Z` },
+      { lat: 43.6, lon: 7.3, speed: 11, course: 80, heading: 80, last_position_UTC: `${day}T08:00:00Z` },
+    ] }, meta: { success: true } }, 2);
+  };
+  const cfg = dlCfg({ lookbackDays: 1 });
+  const r = await planner.runHistory(pool, dl, cfg, { now: new Date('2026-11-10T03:30:00Z') });
+  assert.equal(urls.length, YACHTS.length, 'ein Aufruf je Yacht');
+  assert.ok(urls.every(u => u.pathname === '/api/v0/vessel_history' && u.searchParams.get('from') === '2026-11-09'
+    && u.searchParams.get('to') === '2026-11-09' && u.searchParams.get('days') === null));
+  assert.equal(r.days_done + r.days_empty, YACHTS.length);
+  assert.ok(r.days_empty > 0 && r.days_done > 0);
+  assert.equal(r.charged, r.days_done * 2, '2 Credits je Tag mit Daten');
+  const moved = await pool.query(`SELECT COUNT(*)::int n FROM vessel_days WHERE dataset = $1 AND history_moved`, [DS]);
+  assert.equal(moved.rows[0].n, r.days_done);
+  const notes = await logRows();
+  assert.ok(!notes.some(x => /Datensatzlimit/.test(x.note || '')), 'keine MST-Datensatzwarnung');
+});
+
+test('Datalastic: Rückwärtsabruf in 30-Tage-Blöcken, Fenster bis 10.08.2021', async () => {
+  await clean();
+  const base = { backfillDays: 5000, backfillTailDays: 2, periodStartDay: 1, backfillFrom: null };
+  const tail = await planner.planHistory(pool, dl, dlCfg(base), { now: new Date('2026-11-29T03:30:00Z') });
+  assert.ok(tail.backfill.days > 0, 'Rückwärtsabruf aktiv');
+  assert.ok(tail.backfill.from >= '2021-08-10' && tail.backfill.from <= '2021-08-12', `ältester Tag ${tail.backfill.from}`);
+  assert.ok(tail.backfill_calls.every(c => c.days.length <= 30));
+  assert.ok(tail.backfill_calls.some(c => c.days.length > 1), 'mehrere Tage je Abfrage');
+  const from25 = await planner.planHistory(pool, dl, dlCfg({ ...base, backfillFrom: '2025-01-01' }), { now: new Date('2026-11-29T03:30:00Z') });
+  assert.equal(from25.backfill.from, '2025-01-01');
+  assert.ok(tail.expected_credits <= tail.status.month_left);
 });

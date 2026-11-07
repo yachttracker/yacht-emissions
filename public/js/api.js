@@ -63,6 +63,7 @@ function mapSummaryRow(r) {
     co2_kg_total: num(r.co2_kg_total), fuel_kg_total: num(r.fuel_kg_total),
     nox_kg_total: num(r.nox_kg_total), sox_kg_total: num(r.sox_kg_total),
     coverage_h: num(r.coverage_h), coverage_history_h: num(r.coverage_history_h),
+    coverage_bridged_h: num(r.coverage_bridged_h),
     period_h: num(r.period_h), data_points: num(r.data_points), last_seen: r.last_seen,
   };
   row.coverage = row.period_h ? Math.min(1, (row.coverage_h || 0) / row.period_h) : null;

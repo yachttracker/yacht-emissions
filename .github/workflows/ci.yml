@@ -48,7 +48,7 @@ jobs:
       - name: API-Tests (Zeitfenster, Maskierung, Admin-Schutz, Sichtbarkeit)
         run: node --test --test-reporter=spec test/api.test.js test/access.test.js
       - name: Emissionsberechnung v3 (Rechenbeispiel) und Neuberechnungsskript
-        run: node --test --test-reporter=spec test/emissions.test.js test/recompute.test.js test/specs.test.js
+        run: node --test --test-reporter=spec test/emissions.test.js test/recompute.test.js test/specs.test.js test/datalastic.test.js
       - name: Abruflogik (Teilabrufe, Credit-Zähler, maskierte Historie, Rückwärtsabruf)
         shell: bash
         run: |

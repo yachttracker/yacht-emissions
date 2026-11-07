@@ -117,7 +117,7 @@ function integrate(win) {
     });
     if (cov > 0) rows.push({ mmsi: y.mmsi, name: y.name, flag: y.flag, flag_code: y.flag, length_m: y.length, category: 'yacht',
       co2_kg_total: +co2.toFixed(1), fuel_kg_total: +fuel.toFixed(1), nox_kg_total: +nox.toFixed(1), sox_kg_total: +sox.toFixed(2),
-      coverage_h: +cov.toFixed(2), coverage_history_h: +covHist.toFixed(2), period_h: win.period_h, data_points: n,
+      coverage_h: +cov.toFixed(2), coverage_history_h: +covHist.toFixed(2), coverage_bridged_h: +(covHist * 0.3).toFixed(2), period_h: win.period_h, data_points: n,
       last_seen: new Date(last).toISOString() });
   }
   return rows.sort((a, b) => b.co2_kg_total - a.co2_kg_total);
@@ -184,7 +184,8 @@ const server = http.createServer(async (req, res) => {
         const rows = integrate(w);
         if (!(q.meta === '1')) return out(rows);
         return out({ meta: { ...windowMeta(w), ...RANGE, dataset: 'demo', calc_version: CALC_VERSION, yachts_tracked: FIX.yachts.length,
-          yachts_with_data: rows.length, max_gap_hours: MAX_GAP_H, max_gap_hours_history: MAX_GAP_HIST_H, visibility: v }, rows });
+          yachts_with_data: rows.length, max_gap_hours: MAX_GAP_H, max_gap_hours_history: MAX_GAP_HIST_H,
+          stationary_max_gap_hours: 24, stationary_v_kn: 2, stationary_dist_sm: 0.3, visibility: v }, rows });
       }
       const hm = /^\/api\/yacht\/(\d{9})\/history$/.exec(p);
       if (hm) {
