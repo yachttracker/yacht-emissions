@@ -90,9 +90,26 @@ function navCode(v) {
   return null;
 }
 
+// Schlüssel prüfen: Leerzeichen am Rand entfernen; sonst nur sichtbare ASCII-Zeichen. Node sendet
+// Kopfzeilen als Latin-1 → ein kopiertes Sonderzeichen (z. B. „£“, geschütztes Leerzeichen) kommt bei
+// Datalastic als ungültiges Byte an (belegt: 401 „invalid byte sequence … 0xa3“, 12.11.2026).
+// Die Meldung nennt nur Stelle und Zeichencode, nie den Schlüssel.
+function apiKey(raw = process.env.DL_API_KEY) {
+  const key = String(raw || '').trim();
+  const fail = (msg) => { const e = new Error(msg); e.status = 401; e.charged = 0; e.chargedKnown = true; return e; };
+  if (!key) throw fail('DL_API_KEY nicht gesetzt');
+  const chars = [...key];
+  const bad = chars.findIndex(ch => { const c = ch.codePointAt(0); return c < 0x21 || c > 0x7e; });
+  if (bad >= 0) {
+    const cp = chars[bad].codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    throw fail(`DL_API_KEY enthält an Stelle ${bad + 1} von ${chars.length} ein unzulässiges Zeichen (U+${cp}); ` +
+      'Schlüssel neu aus dem Datalastic-Profil kopieren und in Railway ersetzen');
+  }
+  return key;
+}
+
 async function call(path, params, attempt = 1) {
-  const key = process.env.DL_API_KEY;
-  if (!key) throw new Error('DL_API_KEY nicht gesetzt');
+  const key = apiKey();
   const qs = new URLSearchParams();
   for (const [k, v] of params) qs.append(k, v);
   const url = `${BASE}${path}?${qs}`;
@@ -259,4 +276,4 @@ async function fetchHistory(mmsi, fromIso, toIso) {
                      remaining: r.remaining ?? null }] };
 }
 
-module.exports = { name: 'datalastic', COSTS, HISTORY, fetchLive, fetchHistory, fetchByImo, parseUtc, navCode };
+module.exports = { name: 'datalastic', COSTS, HISTORY, fetchLive, fetchHistory, fetchByImo, parseUtc, navCode, apiKey };

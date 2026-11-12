@@ -165,3 +165,22 @@ test('Planung mit Datalastic Starter: 30 Tage je Abfrage, Variante B im Budget',
   const auto = computeSchedule(loadConfig({ AIS_PROVIDER: 'datalastic', CREDIT_MONTH_BUDGET: '20000' }), YACHTS.length, dl.COSTS);
   assert.equal(auto.over_budget, true);
 });
+
+test('Schlüsselprüfung: Rand-Leerzeichen entfernt, Sonderzeichen mit Stelle gemeldet, ohne Schlüssel im Text', () => {
+  assert.equal(dl.apiKey('  abc-123 \n'), 'abc-123');
+  const secret = 'abcd1234-ef56\u00a3-7890';
+  assert.throws(() => dl.apiKey(secret), (e) => e.status === 401 && /Stelle 14 von 19/.test(e.message)
+    && /U\+00A3/.test(e.message) && !e.message.includes('abcd1234'));
+  assert.throws(() => dl.apiKey('ab\u00a0cd'), /U\+00A0/);
+  assert.throws(() => dl.apiKey(''), /nicht gesetzt/);
+});
+
+test('Ungültiger Schlüssel: kein Abruf, Bulk bricht mit 401 ab', async () => {
+  const keep = process.env.DL_API_KEY;
+  process.env.DL_API_KEY = 'abc\u00a3def';
+  let n = 0;
+  global.fetch = async () => { n++; return new Response('{}'); };
+  await assert.rejects(dl.fetchLive([YACHTS[0].mmsi]), /unzulässiges Zeichen/);
+  assert.equal(n, 0);
+  process.env.DL_API_KEY = keep;
+});
