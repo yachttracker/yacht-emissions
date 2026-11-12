@@ -192,9 +192,11 @@ function connectAIS() {
 // Mit Zugang (Cookie, ?access=, x-site-access, Basic) bleibt alles wie im privaten Modus.
 const PUBLIC_MIN_BUCKET_S = Number(process.env.PUBLIC_MIN_BUCKET_S) || 3600;
 const publicView = (req) => siteMode() === 'public' && !req.siteTrusted;
-function rawOnly(req, res, next) {
-  if (!publicView(req)) return next();
+// true → Antwort gesendet (Rohdaten-Endpunkt ohne Zugang im öffentlichen Modus)
+function deniedRaw(req, res) {
+  if (!publicView(req)) return false;
   res.status(403).json({ error: 'not available in the public dashboard (raw AIS data, data provider licence)' });
+  return true;
 }
 
 // Latest position + emissions for all yachts
@@ -202,7 +204,8 @@ function rawOnly(req, res, next) {
 const LATEST_COLUMNS = `id, mmsi, name, flag, length_m, latitude, longitude, speed_knots, heading, cog, nav_status,
   co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp, created_at, me_load, mcr_kw, mcr_estimated,
   calc_version, source, dataset, observed, current_port`;
-app.get('/api/yachts/latest', rawOnly, async (req, res) => {
+app.get('/api/yachts/latest', async (req, res) => {
+  if (deniedRaw(req, res)) return;
   try {
     const result = await pool.query(`
       SELECT DISTINCT ON (mmsi) ${LATEST_COLUMNS}
@@ -438,7 +441,8 @@ app.get('/api/status', async (_, res) => {
 
 // ── IDENTITÄTSABGLEICH (öffentlich, nur lesend; keine Eigentümer) ────────────
 // Letzter Abgleich IMO ↔ MMSI je Yacht, Problemfälle zuerst (lib/identity.js).
-app.get('/api/identity', rawOnly, async (_, res) => {
+app.get('/api/identity', async (req, res) => {
+  if (deniedRaw(req, res)) return;
   try {
     res.set('Cache-Control', 'no-store');
     res.json({ interval_days: IDENTITY_CHECK_DAYS, ...(await identity.latest(pool, CFG.dataset)) });
@@ -447,7 +451,8 @@ app.get('/api/identity', rawOnly, async (_, res) => {
 
 // Prüfliste: Unstimmigkeiten (MMSI, keine frische Meldung, fällige Pausen), die eine
 // Web-Recherche auslösen; dazu die aktuellen Pausen (lib/tracking.js). Ohne Eigentümer.
-app.get('/api/review', rawOnly, async (_, res) => {
+app.get('/api/review', async (req, res) => {
+  if (deniedRaw(req, res)) return;
   try {
     res.set('Cache-Control', 'no-store');
     res.json(await tracking.review(pool, CFG.dataset, { identityLatest: await identity.latest(pool, CFG.dataset) }));
