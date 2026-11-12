@@ -448,3 +448,29 @@ body.detail-open .workspace { grid-template-columns: minmax(0, 1fr) 440px; }
 @media (forced-colors: active) {
   .bar-seg, .meter-fill { background: CanvasText !important; }
 }
+
+/* ── Klimawirkung: Schieberegler und Nachwirkungskurve ── */
+.climate-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; margin-top: 12px; padding: 10px 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--surface); }
+.climate-controls[hidden] { display: none; }
+.cc-field { min-width: 200px; }
+.cc-field.is-off { opacity: .45; }
+.cc-row { display: flex; align-items: center; gap: 6px; }
+.climate-controls input[type="range"] { width: 180px; accent-color: var(--cat-yacht); }
+.climate-controls output { font-weight: 600; color: var(--ink); }
+.cc-note { flex-basis: 100%; margin: 0; }
+.cc-table th { font-weight: 400; text-align: left; }
+.cc-table .cc-sum th, .cc-table .cc-sum td { font-weight: 600; border-top: 1px solid var(--line-strong); }
+.cc-grid { stroke: var(--line); stroke-width: 1; }
+.cc-zero { stroke: var(--muted); stroke-width: 1; }
+.cc-tick { font-size: 10px; fill: var(--muted); }
+.cc-line { stroke-width: 1.6; stroke-linejoin: round; }
+.cc-total { stroke: var(--ink); --cc: var(--ink); stroke-width: 2.4; }
+.cc-co2 { stroke: var(--cat-yacht); --cc: var(--cat-yacht); }
+.cc-nox { stroke: #c2410c; --cc: #c2410c; }
+.cc-so2 { stroke: #0f766e; --cc: #0f766e; stroke-dasharray: 4 3; }
+.cc-n2o { stroke: #7c3aed; --cc: #7c3aed; }
+.cc-legend { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 2px; font-size: 12.5px; }
+.cc-legend li { display: flex; align-items: center; gap: 6px; }
+.cc-swatch { display: inline-block; width: 14px; height: 3px; background: var(--cc); }
+#f-metric { min-width: 220px; }

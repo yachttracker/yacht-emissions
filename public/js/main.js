@@ -6,12 +6,15 @@ import { h, clear, icon } from './dom.js';
 import * as fmt from './format.js';
 import { renderRateChart } from './chart.js';
 import { renderFleetMap, renderRouteMap } from './map.js';
+import * as climate from './climate.js';
+import { renderAfterEffect } from './climateChart.js';
 
 // ── Zustand ──────────────────────────────────────────────────────────────────
 const state = {
   view: DEFAULTS.view, layout: 'list',
   period: DEFAULTS.period, mode: DEFAULTS.mode, from: null, to: null,
   metric: DEFAULTS.metric,
+  climate: { ...climate.DEFAULTS },   // Zeithorizont und Faktoren der Klimawirkung (Schieberegler)
   filters: { search: '', flag: '', size: '', minCoverage: 0 },
   selected: null,
   fleet: null, summary: null, status: null, health: null,
@@ -19,6 +22,8 @@ const state = {
 };
 const $ = (id) => document.getElementById(id);
 const metricDef = () => METRICS.find(m => m.key === state.metric && m.enabled) || METRICS[0];
+// Wert einer Metrik für eine Summary-Zeile: Summenfeld (kg) oder berechnete Klimawirkung (kg CO2e)
+const valueOf = (m, row) => (!row ? null : m.climate ? climate.co2e(row, m.climate, state.climate) : m.field ? row[m.field] : null);
 const win = () => (state.period === 'custom'
   ? { period: 'custom', from: state.from, to: state.to }
   : { period: state.period, mode: state.mode });
@@ -35,6 +40,10 @@ function readHash() {
   }
   if (METRICS.some(m => m.key === p.get('metric') && m.enabled)) state.metric = p.get('metric');
   if (/^\d{9}$/.test(p.get('yacht') || '')) state.selected = p.get('yacht');
+  const [hl, hh] = climate.HORIZON_RANGE, [sl, sh] = climate.SO2_RANGE;
+  const hz = Number(p.get('h')); if (Number.isFinite(hz) && hz >= hl && hz <= hh) state.climate.horizon = hz;
+  const so = Number(p.get('so2')); if (p.get('so2') && Number.isFinite(so) && so >= sl && so <= sh) state.climate.so2 = so;
+  if (climate.NOX_SETS[p.get('nox')]) state.climate.nox = p.get('nox');
 }
 function writeHash() {
   const p = new URLSearchParams();
@@ -47,6 +56,9 @@ function writeHash() {
   }
   if (state.metric !== DEFAULTS.metric) p.set('metric', state.metric);
   if (state.selected) p.set('yacht', state.selected);
+  if (state.climate.horizon !== climate.DEFAULTS.horizon) p.set('h', String(state.climate.horizon));
+  if (state.climate.so2 !== climate.DEFAULTS.so2) p.set('so2', String(state.climate.so2));
+  if (state.climate.nox !== climate.DEFAULTS.nox) p.set('nox', state.climate.nox);
   const hash = p.toString();
   window.history.replaceState(null, '', window.location.pathname + window.location.search + (hash ? `#${hash}` : ''));
 }
@@ -127,8 +139,8 @@ function combine(y, sr, m) {
   r.owner_source_url = sr ? sr.owner_source_url : y.owner_source_url || null;
   r.category = (sr && sr.category) || y.category || 'yacht';
   r.hasData = !!sr;
-  r.value = sr && m.field ? sr[m.field] : null;
-  r.segments = sr && m.field ? [{ category: r.category, value: r.value }] : [];
+  r.value = valueOf(m, sr);
+  r.segments = sr && Number.isFinite(r.value) ? [{ category: r.category, value: Math.max(0, r.value) }] : [];
   return r;
 }
 
@@ -196,6 +208,7 @@ function renderControls() {
   const modeSel = root.querySelector('#f-mode');
   modeSel.value = state.period === 'custom' ? 'custom' : state.mode;
   root.querySelector('#f-metric').value = state.metric;
+  syncClimateControls(root);
   const custom = root.querySelector('.custom-range');
   custom.hidden = state.period !== 'custom' && !custom.dataset.open;
   // Flaggen aus der Flotte
@@ -304,8 +317,49 @@ function buildControls(root) {
         h('div', { class: 'control-group' }, seg, mode)),
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Metric'), metric),
       toggle),
-    custom, extraWrap,
+    climateControls(), custom, extraWrap,
     h('p', { class: 'period-hint', 'aria-live': 'polite' }));
+}
+
+// Schieberegler der Klimawirkung: Zeithorizont, SO2-Faktor, NOx-Datensatz (nur bei Klima-Metriken sichtbar)
+function climateControls() {
+  const set = (patch) => { Object.assign(state.climate, patch); renderAll(); };
+  const [hl, hh] = climate.HORIZON_RANGE, [sl, sh] = climate.SO2_RANGE;
+  return h('div', { class: 'climate-controls', id: 'climate-controls', hidden: true },
+    h('label', { class: 'field cc-field' },
+      h('span', { class: 'field-label' }, 'Time horizon ', h('output', { id: 'cc-h-out' })),
+      h('span', { class: 'cc-row' },
+        h('input', { type: 'range', id: 'cc-h', min: hl, max: hh, step: 5, 'aria-label': 'Time horizon in years',
+          oninput: (e) => set({ horizon: Number(e.target.value) }) }),
+        h('button', { type: 'button', class: 'btn btn-quiet', onclick: () => set({ horizon: 20 }) }, '20 y'),
+        h('button', { type: 'button', class: 'btn btn-quiet', onclick: () => set({ horizon: 100 }) }, '100 y'))),
+    h('label', { class: 'field cc-field', id: 'cc-so2-field' },
+      h('span', { class: 'field-label' }, 'Sulphate effect ', h('output', { id: 'cc-so2-out' })),
+      h('input', { type: 'range', id: 'cc-so2', min: sl, max: sh, step: 0.1, 'aria-label': 'Sulphate forcing per Tg SO2 per year',
+        oninput: (e) => set({ so2: Number(e.target.value) }) })),
+    h('label', { class: 'field cc-field', id: 'cc-nox-field' },
+      h('span', { class: 'field-label' }, 'NOₓ study'),
+      h('select', { id: 'cc-nox', class: 'select', onchange: (e) => set({ nox: e.target.value }) },
+        Object.entries(climate.NOX_SETS).map(([k, v]) => h('option', { value: k }, v.label)))),
+    h('button', { type: 'button', class: 'btn btn-quiet cc-reset', onclick: () => set({ ...climate.DEFAULTS }) }, 'Reset'),
+    h('p', { class: 'fine cc-note' }, 'CO₂e: each substance weighted by its global warming potential over the chosen horizon (IPCC AR6 method). ',
+      'Sulphate and the NOₓ methane effect cool temporarily and harm air quality; they do not offset CO₂. ',
+      'Defaults: 100 years, sulphate −8.4 mW m⁻² per Tg SO₂/yr (Skeie et al. 2024), NOₓ Holmes et al. 2014. Black carbon is not included.'));
+}
+function syncClimateControls(root) {
+  const box = root.querySelector('#climate-controls');
+  const m = metricDef();
+  box.hidden = !m.climate;
+  if (!m.climate) return;
+  const c = state.climate;
+  root.querySelector('#cc-h').value = String(c.horizon);
+  root.querySelector('#cc-h-out').textContent = `${c.horizon} years`;
+  root.querySelector('#cc-so2').value = String(c.so2);
+  root.querySelector('#cc-so2-out').textContent = `${fmt.dec1(c.so2)} mW m⁻² per Tg SO₂/yr`;
+  root.querySelector('#cc-nox').value = c.nox;
+  for (const id of ['cc-so2-field', 'cc-nox-field']) root.querySelector(`#${id}`).classList.toggle('is-off', m.climate === 'ghg');
+  root.querySelector('#cc-so2').disabled = m.climate === 'ghg';
+  root.querySelector('#cc-nox').disabled = m.climate === 'ghg';
 }
 
 // ── Kennzahlen ───────────────────────────────────────────────────────────────
@@ -324,7 +378,7 @@ function renderKpis(rows, built) {
 
   root.append(
     h('div', { class: 'kpi kpi-hero' },
-      h('p', { class: 'kpi-label' }, `${m.long}, total`),
+      h('p', { class: 'kpi-label' }, `${m.long}, total${m.climate ? `, ${state.climate.horizon}-year horizon` : ''}`),
       h('p', { class: 'kpi-value' }, empty ? '–' : tm.num, empty ? '' : h('span', { class: 'kpi-unit' }, ` ${tm.unit}`)),
       h('p', { class: 'kpi-sub' }, `${periodLabel()}, model estimate`)),
     h('div', { class: 'kpi' },
@@ -459,14 +513,13 @@ function rankingList(rows, max) {
 }
 
 function rankingTable(rows) {
-  const unitOf = (field) => fmt.unitFor(Math.max(...rows.map(r => r[field] || 0)));
   const cols = [
     { k: 'rank', label: 'Rank', num: true, v: r => r.rank },
     { k: 'owner', label: 'Owner', v: r => r.owner },
     { k: 'name', label: 'Yacht', v: r => r.name },
     { k: 'flag', label: 'Flag', v: r => r.flag_code || '–' },
     { k: 'len', label: 'Length (m)', num: true, v: r => (Number.isFinite(r.length_m) ? r.length_m : '–') },
-    ...METRICS.filter(m => m.enabled).map(m => { const u = unitOf(m.field); return { k: m.key, label: `${m.label} (${u})`, num: true, v: r => fmt.massIn(r[m.field], u) }; }),
+    ...METRICS.filter(m => m.enabled).map(m => { const u = fmt.unitFor(Math.max(...rows.map(r => Math.abs(valueOf(m, r) || 0)))); return { k: m.key, label: `${m.label} (${u})`, num: true, v: r => fmt.massIn(valueOf(m, r), u) }; }),
     { k: 'cov', label: 'Coverage', num: true, v: r => fmt.pct(r.coverage) },
     { k: 'last', label: 'Last report', v: r => fmt.dateTime(r.last_seen) },
   ];
@@ -581,6 +634,7 @@ function renderDetail(r) {
     h('p', { class: 'detail-period' }, icon('calendar', { size: 14 }), periodLabel(),
       state.summary ? h('span', { class: 'muted' }, fmt.rangeLabel(state.summary.meta.window_from, state.summary.meta.window_to)) : ''),
     h('div', { class: 'detail-figures' }),
+    h('section', { class: 'detail-section detail-climate' }),
     h('section', { class: 'detail-section' },
       h('h3', {}, 'CO₂ emission rate over time'), chartEl, histNote),
     mapEl ? h('section', { class: 'detail-section' },
@@ -628,12 +682,37 @@ function updateDetailFigures(panel, r) {
     return;
   }
   const m = metricDef();
-  for (const mm of METRICS.filter(x => x.enabled)) box.append(fig(mm.label, fmt.mass(r[mm.field]).text, null, mm.key === m.key));
+  for (const mm of METRICS.filter(x => x.enabled)) box.append(fig(mm.label, fmt.mass(valueOf(mm, r)).text, mm.climate ? `${state.climate.horizon}-year horizon` : null, mm.key === m.key));
   box.append(
     fig('Coverage', fmt.pct(r.coverage), `${fmt.hours(r.coverage_h)} of ${fmt.hours(r.period_h)}${r.coverage_bridged_h > 0 ? `, incl. ${fmt.hours(r.coverage_bridged_h)} lying time bridged` : ''}`),
     fig('Last report', fmt.ago(r.last_seen), fmt.dateTime(r.last_seen)));
+  renderClimateSection(panel.querySelector('.detail-climate'), r);
   const rk = panel.querySelector('.detail-rank');
   if (rk) rk.textContent = r.rank ? `Rank ${r.rank} of ${state.summary ? state.summary.rows.length : '–'} by ${m.label}` : 'Not ranked in this period';
+}
+
+// Klimawirkung je Stoff (CO2e beim gewählten Horizont) und Nachwirkung über 100 Jahre
+function renderClimateSection(sec, r) {
+  if (!sec) return;
+  clear(sec);
+  if (!r.hasData) return;
+  const c = state.climate;
+  const p = climate.co2eParts(r, c);
+  const total = p.co2 + p.n2o + p.so2 + p.nox;
+  const row = (label, v, cls) => h('tr', { class: cls || null }, h('th', { scope: 'row' }, label), h('td', { class: 'num' }, fmt.mass(v).text));
+  const chartEl = h('div', { class: 'chart-host' });
+  sec.append(
+    h('h3', {}, `Climate impact (${c.horizon}-year horizon)`),
+    h('table', { class: 'data-table cc-table' },
+      h('caption', { class: 'sr-only' }, 'CO₂ equivalents by substance'),
+      h('tbody', {},
+        row('CO₂', p.co2), row('N₂O', p.n2o),
+        row('Greenhouse gases', p.co2 + p.n2o, 'cc-sum'),
+        row('SO₂ (sulphate, cooling)', p.so2), row('NOₓ (ozone − methane)', p.nox),
+        row('Climate impact, all substances', total, 'cc-sum'))),
+    h('h3', {}, 'After-effect of these emissions'),
+    chartEl);
+  renderAfterEffect(chartEl, { row: r, years: (r.period_h || 8760) / 8760, params: c });
 }
 
 function ownerSource(r) {
@@ -686,7 +765,7 @@ function renderStatus() {
           : null,
         h('li', {}, 'Coverage is the share of the selected period with reports. Totals are not extrapolated to time without reports.'),
         h('li', {}, 'Owner names are only shown when a cited source backs the ownership, and only where the site owner has made names visible.'),
-        h('li', {}, 'Climate impact beyond CO₂ (radiative forcing of NOₓ, sulphur aerosols and other effects) is not shown yet; the method is still being defined.'),
+        h('li', {}, 'Climate impact (CO₂e): CO₂, N₂O, sulphate (SO₂) and NOₓ weighted by their global warming potential over a selectable horizon (default 100 years), following IPCC AR6. Short-lived substances are shown separately because their cooling is temporary. Black carbon is not included, as particle filter fitments are unknown. NOₓ values are radiative forcing, sulphate values effective radiative forcing.'),
         h('li', {}, 'Calendar periods and dates use UTC.'))));
 }
 

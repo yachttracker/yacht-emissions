@@ -15,9 +15,13 @@ export const METRICS = [
   { key: 'fuel', label: 'Fuel', long: 'Fuel burned', phrase: 'fuel burned', field: 'fuel_kg_total', enabled: true },
   { key: 'nox', label: 'NOₓ', long: 'Nitrogen oxides (NOₓ)', phrase: 'NOₓ', field: 'nox_kg_total', enabled: true },
   { key: 'sox', label: 'SOₓ', long: 'Sulphur oxides (SOₓ)', phrase: 'SOₓ', field: 'sox_kg_total', enabled: true },
-  // Reserviert: Methode für den Strahlungsantrieb wird separat festgelegt (Stand 2026-10-18)
-  { key: 'erf', label: 'Climate impact (ERF)', long: 'Effective radiative forcing', phrase: 'climate impact', field: null,
-    enabled: false, note: 'Method pending' },
+  // Klimawirkung (Entscheidung Paul 12.11.2026, claude/recherche/erf_methodik_v2.md): berechnet im Browser
+  // aus den Summen (public/js/climate.js), Zeithorizont und Faktoren per Schieberegler.
+  // 'all' = Strahlenbilanz-Zahl mit SO2 und NOx (B); 'ghg' = nur Treibhausgase CO2 + N2O (A).
+  { key: 'climate', label: 'Climate impact (CO₂e)', long: 'Climate impact, all substances (CO₂e)', phrase: 'climate impact (CO₂e)',
+    climate: 'all', enabled: true },
+  { key: 'ghg', label: 'Greenhouse gases (CO₂e)', long: 'Greenhouse gases CO₂ + N₂O (CO₂e)', phrase: 'greenhouse-gas emissions (CO₂e)',
+    climate: 'ghg', enabled: true },
 ];
 
 // Zeiträume (Backend: lib/periods.js). Kalendergrenzen in UTC.
