@@ -41,8 +41,21 @@ test('Modus: nur "public" öffnet, alles andere ist privat', () => {
 });
 
 test('public: alles durchgelassen, kein Cookie', () => {
-  const { passed, rs } = run(gateWith('public'), req({ path: '/api/fleet' }));
+  const rq = req({ path: '/api/fleet' });
+  const { passed, rs } = run(gateWith('public'), rq);
   assert.ok(passed); assert.equal(rs.cookies.length, 0);
+  assert.equal(rq.siteTrusted, false, 'ohne Zugang keine Rohdaten');
+});
+
+test('public: Zugang per Kopfzeile, ?access= oder Cookie markiert die Anfrage als vertrauenswürdig', () => {
+  const g = gateWith('public');
+  for (const rq of [req({ path: '/api/review', headers: { 'x-site-access': PW } }),
+                    req({ path: '/api/review', query: { access: ADMIN } }),
+                    req({ path: '/api/review', headers: { cookie: `${COOKIE}=${cookieValue(PW)}` } })]) {
+    assert.ok(run(g, rq).passed); assert.equal(rq.siteTrusted, true);
+  }
+  const wrong = req({ path: '/api/review', headers: { 'x-site-access': 'falsch' } });
+  assert.ok(run(g, wrong).passed); assert.equal(wrong.siteTrusted, false);
 });
 
 test('private: Seite und API ohne Zugang gesperrt (401, noindex)', () => {

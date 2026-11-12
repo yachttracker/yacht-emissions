@@ -246,17 +246,51 @@ test('neue Zeitfenster: year und calendar', async () => {
   }
 });
 
+// Zugang (öffentlicher Modus): mit Kopfzeile sieht man alles wie im privaten Modus
+const T = () => ({ 'x-site-access': TOKEN });
+
 test('History: Fenster, Metadaten, Verdichtung für die Anzeige', async () => {
-  const legacy = await get(`/api/yacht/${A}/history?period=day`);
+  const legacy = await get(`/api/yacht/${A}/history?period=day`, T());
   assert.ok(Array.isArray(legacy.json));
   assert.equal(legacy.json.length, 47, 'Punkte in (jetzt − 24 h, jetzt]');
-  const m = await get(`/api/yacht/${A}/history?period=week&meta=1&max_points=20`);
+  const m = await get(`/api/yacht/${A}/history?period=week&meta=1&max_points=20`, T());
   assert.equal(m.json.meta.points_raw, 120);
   assert.equal(m.json.meta.downsampled, true);
   assert.ok(m.json.points.length <= 21 && m.json.points.length > 0);
-  const hb = await get(`/api/yacht/${B}/history?period=week`);
+  const hb = await get(`/api/yacht/${B}/history?period=week`, T());
   assert.ok(hb.json.every(p => p.source === 'history'), 'B: an Historientagen nur Historie');
   assert.equal((await get('/api/yacht/123/history')).status, 400);
+});
+
+test('Öffentliche Ansicht: keine AIS-Rohdaten ohne Zugang (Datalastic §8)', async () => {
+  for (const p of ['/api/yachts/latest', '/api/identity', '/api/review']) {
+    const x = await get(p);
+    assert.equal(x.status, 403, p);
+    assert.equal((await get(p, T())).status, 200, `${p} mit Zugang`);
+  }
+  const pub = await get(`/api/yacht/${A}/history?period=day&meta=1&max_points=1500`);
+  assert.equal(pub.status, 200);
+  assert.ok(pub.json.points.length > 0 && pub.json.points.length <= 25, `Stundenmittel: ${pub.json.points.length} Punkte`);
+  assert.ok(pub.json.meta.bucket_s >= 3600);
+  for (const pt of pub.json.points) {
+    for (const k of ['latitude', 'longitude', 'speed_knots']) assert.ok(!(k in pt), `${k} öffentlich`);
+    assert.ok(Number.isFinite(pt.co2_kg_h));
+  }
+  const legacy = await get(`/api/yacht/${A}/history?period=day`);
+  assert.ok(legacy.json.every(pt => !('latitude' in pt)), 'auch ohne meta keine Positionen');
+  const full = await get(`/api/yacht/${A}/history?period=day`, T());
+  assert.equal(full.json.length, 47);
+  assert.ok('latitude' in full.json[0]);
+
+  const f = (await get('/api/fleet')).json;
+  assert.ok(f.yachts.every(y => y.last_position === null), 'keine letzte Position');
+  assert.ok(f.yachts.every(y => y.fields.every(fl => fl.status !== 'provider')), 'keine Anbieter-Stammdaten');
+  assert.ok(f.yachts.find(y => y.mmsi === A).last_seen, 'Zeitpunkt der letzten Meldung bleibt');
+  const ft = (await get('/api/fleet', T())).json;
+  assert.ok(ft.yachts.find(y => y.mmsi === A).last_position, 'mit Zugang vorhanden');
+  // Summary (berechnete Werte) bleibt öffentlich
+  assert.equal((await get('/api/emissions/summary?period=week')).status, 200);
+  assert.equal((await get('/api/status')).status, 200);
 });
 
 test('Maskierung: Name verlässt den Server nicht, solange die Sichtbarkeit aus ist', async () => {
@@ -273,7 +307,7 @@ test('Maskierung: Name verlässt den Server nicht, solange die Sichtbarkeit aus 
     '/api/yachts/latest', `/api/yacht/${A}/history?meta=1`, `/api/yacht/${B}/history?period=week&meta=1`, '/api/status',
     `/api/emissions/summary?from=${yesterday()}&meta=1`];
   for (const p of paths) {
-    const x = await get(p);
+    const x = await get(p, T());
     assert.equal(x.status, 200, p);
     for (const secret of [OWNER_A, OWNER_B, SOURCE_A, LEGACY]) {
       assert.ok(!x.text.includes(secret), `${p} enthält "${secret}"`);

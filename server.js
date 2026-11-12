@@ -185,12 +185,24 @@ function connectAIS() {
 
 // ── API ENDPOINTS ────────────────────────────────────────────────────────────
 
+// Öffentliche Ansicht ohne AIS-Rohdaten (Datalastic Terms §8, seit 2026-11-12):
+// Ohne Zugang gibt die API im öffentlichen Modus keine Positionen, Geschwindigkeiten, Navigationsstatus
+// oder Anbieter-Datensätze aus; Verläufe nur als Stundenmittel der berechneten Raten
+// (PUBLIC_MIN_BUCKET_S, Annahme: grob genug, dass sich kein Positions-/Fahrtverlauf rekonstruieren lässt).
+// Mit Zugang (Cookie, ?access=, x-site-access, Basic) bleibt alles wie im privaten Modus.
+const PUBLIC_MIN_BUCKET_S = Number(process.env.PUBLIC_MIN_BUCKET_S) || 3600;
+const publicView = (req) => siteMode() === 'public' && !req.siteTrusted;
+function rawOnly(req, res, next) {
+  if (!publicView(req)) return next();
+  res.status(403).json({ error: 'not available in the public dashboard (raw AIS data, data provider licence)' });
+}
+
 // Latest position + emissions for all yachts
 // Spalten ausdrücklich ohne positions.owner (Eigentümer kommen nur aus vessel_owner, maskiert)
 const LATEST_COLUMNS = `id, mmsi, name, flag, length_m, latitude, longitude, speed_knots, heading, cog, nav_status,
   co2_kg_h, nox_kg_h, sox_kg_h, fuel_kg_h, timestamp, created_at, me_load, mcr_kw, mcr_estimated,
   calc_version, source, dataset, observed, current_port`;
-app.get('/api/yachts/latest', async (req, res) => {
+app.get('/api/yachts/latest', rawOnly, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT ON (mmsi) ${LATEST_COLUMNS}
@@ -214,7 +226,9 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
     if (!/^\d{9}$/.test(mmsi)) return res.status(400).json({ error: 'mmsi must have 9 digits' });
     const win = resolveWindow(req.query);
     const maxPoints = Math.min(Math.max(Number(req.query.max_points) || 0, 0), 5000);
-    const h = await dash.history(mmsi, win, maxPoints);
+    const pub = publicView(req);
+    const h = await dash.history(mmsi, win, maxPoints, { minBucketS: pub ? PUBLIC_MIN_BUCKET_S : 0 });
+    if (pub) h.points = h.points.map(({ latitude, longitude, speed_knots, ...rest }) => rest);
     if (!wantsMeta(req)) return res.json(h.points);
     const range = await dash.yachtRange(mmsi);
     res.json({
@@ -378,7 +392,12 @@ app.get('/api/emissions/summary', async (req, res) => {
 // Filter und Detailansicht. Eigentümerfelder setzt die Maskierung.
 app.get('/api/fleet', async (req, res) => {
   try {
-    const [yachts, range] = await Promise.all([dash.fleet(), dash.dataRange()]);
+    let [yachts, range] = await Promise.all([dash.fleet(), dash.dataRange()]);
+    if (publicView(req)) {
+      // ohne letzte Position und ohne Anbieter-Stammdaten (Rohdaten); Kopien, der Cache bleibt unverändert
+      yachts = yachts.map(({ last_position, ...y }) => ({ ...y, last_position: null,
+        fields: y.fields.filter(f => f.status !== 'provider') }));
+    }
     res.json({
       meta: { ...range, dataset: CFG.dataset, provider: CFG.provider, calc_version: CALC_VERSION,
               yachts_tracked: YACHTS.length, visibility: req.ownerView, server_time: new Date().toISOString() },
@@ -419,7 +438,7 @@ app.get('/api/status', async (_, res) => {
 
 // ── IDENTITÄTSABGLEICH (öffentlich, nur lesend; keine Eigentümer) ────────────
 // Letzter Abgleich IMO ↔ MMSI je Yacht, Problemfälle zuerst (lib/identity.js).
-app.get('/api/identity', async (_, res) => {
+app.get('/api/identity', rawOnly, async (_, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     res.json({ interval_days: IDENTITY_CHECK_DAYS, ...(await identity.latest(pool, CFG.dataset)) });
@@ -428,7 +447,7 @@ app.get('/api/identity', async (_, res) => {
 
 // Prüfliste: Unstimmigkeiten (MMSI, keine frische Meldung, fällige Pausen), die eine
 // Web-Recherche auslösen; dazu die aktuellen Pausen (lib/tracking.js). Ohne Eigentümer.
-app.get('/api/review', async (_, res) => {
+app.get('/api/review', rawOnly, async (_, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     res.json(await tracking.review(pool, CFG.dataset, { identityLatest: await identity.latest(pool, CFG.dataset) }));
