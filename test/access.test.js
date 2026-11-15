@@ -2,7 +2,7 @@
 // Lauf: node --test test/access.test.js
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { createSiteGate, siteMode, cookieValue, COOKIE } = require('../lib/access');
+const { createSiteGate, siteMode, cookieValue, credentials, COOKIE } = require('../lib/access');
 
 const PW = 'site-password-0123456789abcdef';
 const ADMIN = 'admin-token-0123456789abcdef';
@@ -56,6 +56,37 @@ test('public: Zugang per Kopfzeile, ?access= oder Cookie markiert die Anfrage al
   }
   const wrong = req({ path: '/api/review', headers: { 'x-site-access': 'falsch' } });
   assert.ok(run(g, wrong).passed); assert.equal(wrong.siteTrusted, false);
+});
+
+test('P-10: Seitenzugang nur mit SITE_PASSWORD, ADMIN_TOKEN nur als Rückfall', () => {
+  assert.deepEqual(credentials({ SITE_PASSWORD: PW, ADMIN_TOKEN: ADMIN }), [PW]);
+  assert.deepEqual(credentials({ ADMIN_TOKEN: ADMIN }), [ADMIN]);
+  assert.deepEqual(credentials({ SITE_PASSWORD: '', ADMIN_TOKEN: '' }), []);
+});
+
+test('P-10 public: ?access= auf einer Seite setzt Cookie und entfernt den Parameter', () => {
+  const g = gateWith('public');
+  const rq = req({ path: '/', query: { access: PW, period: 'month' }, originalUrl: `/?access=${PW}&period=month` });
+  const { rs } = run(g, rq);
+  assert.equal(rs.statusCode, 303);
+  assert.equal(rs.redirected, '/?period=month');
+  assert.equal(rs.cookies.length, 1);
+  assert.match(rs.cookies[0], new RegExp(`^${COOKIE}=${cookieValue(PW)};.*HttpOnly`));
+  assert.ok(!rs.cookies[0].includes(PW), 'Passwort nie im Cookie');
+});
+
+test('P-10 public: Fehlversuche je IP begrenzt, danach wird auch das richtige Passwort ignoriert', () => {
+  const g = gateWith('public', [PW], { failMax: 3 });
+  for (let i = 0; i < 3; i++) {
+    const bad = req({ path: '/api/review', headers: { 'x-site-access': `falsch${i}` } });
+    assert.ok(run(g, bad).passed); assert.equal(bad.siteTrusted, false);
+  }
+  const good = req({ path: '/api/review', headers: { 'x-site-access': PW } });
+  const { passed } = run(g, good);
+  assert.ok(passed, 'Seite bleibt öffentlich');
+  assert.equal(good.siteTrusted, false, 'gesperrt');
+  const other = req({ path: '/api/review', headers: { 'x-site-access': PW }, ip: '5.6.7.8' });
+  run(g, other); assert.equal(other.siteTrusted, true, 'andere IP nicht betroffen');
 });
 
 test('private: Seite und API ohne Zugang gesperrt (401, noindex)', () => {
