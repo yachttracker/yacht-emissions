@@ -458,7 +458,7 @@ body.detail-open .workspace { grid-template-columns: minmax(0, 1fr) 440px; }
 .cc-row { display: flex; align-items: center; gap: 6px; }
 .climate-controls input[type="range"] { width: 180px; accent-color: var(--cat-yacht); }
 .climate-controls output { font-weight: 600; color: var(--ink); }
-.cc-note { flex-basis: 100%; margin: 0; }
+.cc-note, .cc-hint { flex-basis: 100%; margin: 0; }
 .cc-table th { font-weight: 400; text-align: left; }
 .cc-table .cc-sum th, .cc-table .cc-sum td { font-weight: 600; border-top: 1px solid var(--line-strong); }
 .cc-grid { stroke: var(--line); stroke-width: 1; }
