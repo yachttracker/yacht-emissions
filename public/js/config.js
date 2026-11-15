@@ -33,8 +33,8 @@ export const METRICS = [
     hint: 'Radiative forcing at the end of the period caused by the emissions in the period (W m⁻²). Short-lived sulphate (cooling) and ozone from NOₓ (warming) dominate; independent of the horizon.' },
   { key: 'co2', label: 'CO₂', long: 'Carbon dioxide (CO₂)', phrase: 'CO₂', field: 'co2_kg_total', enabled: true },
   { key: 'fuel', label: 'Fuel', long: 'Fuel burned', phrase: 'fuel burned', field: 'fuel_kg_total', enabled: true },
-  { key: 'nox', label: 'NOₓ', long: 'Nitrogen oxides (NOₓ)', phrase: 'NOₓ', field: 'nox_kg_total', enabled: true },
-  { key: 'sox', label: 'SOₓ', long: 'Sulphur oxides (SOₓ)', phrase: 'SOₓ', field: 'sox_kg_total', enabled: true },
+  { key: 'nox', label: 'NOₓ as NO₂', long: 'Nitrogen oxides (NOₓ), mass as NO₂', phrase: 'NOₓ (as NO₂)', field: 'nox_kg_total', enabled: true },   // IMO4-Faktoren in g NO2/kWh
+  { key: 'sox', label: 'SOₓ as SO₂', long: 'Sulphur oxides (SOₓ), mass as SO₂', phrase: 'SOₓ (as SO₂)', field: 'sox_kg_total', enabled: true },   // IMO4 Gl. 15: Masse als SO2
 ];
 
 // Zeiträume (Backend: lib/periods.js). Kalendergrenzen in UTC.

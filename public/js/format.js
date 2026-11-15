@@ -56,6 +56,7 @@ export function quantity(v, kind = 'mass') {
 }
 
 export const int =(n) => (Number.isFinite(Number(n)) ? N0.format(Number(n)) : '–');
+export const dec2 = (n) => (Number.isFinite(Number(n)) ? N2.format(Number(n)) : '–');
 export const dec1 = (n) => (Number.isFinite(Number(n)) ? N1.format(Number(n)) : '–');
 export const pct = (x) => (Number.isFinite(x) ? `${N0.format(Math.round(x * 100))} %` : '–');
 

@@ -2,6 +2,7 @@
 // SVG ohne Bibliothek. Linien je Stoff und Summe; kühlende Anteile unter der Nulllinie.
 import { h, s, clear } from './dom.js';
 import { afterEffect } from './climate.js';
+import { unitOf } from './format.js';
 
 const SERIES = [
   { key: 'total', label: 'Total', cls: 'cc-total' },
@@ -17,12 +18,14 @@ function niceStep(span) {
   const raw = span / 4, p = 10 ** Math.floor(Math.log10(raw || 1));
   return [1, 2, 2.5, 5, 10].map(m => m * p).find(st => st >= raw);
 }
-const nW = (w) => w * 1e9;
 const fmtN = (v) => (Math.abs(v) < 0.05 ? '0' : new Intl.NumberFormat('en-GB', { maximumFractionDigits: Math.abs(v) >= 10 ? 0 : 1 }).format(v));
 
 export function renderAfterEffect(el, { row, years, params }) {
   clear(el);
   const data = TS.map(t => ({ t, v: afterEffect(row, years, t, params) }));
+  // Einheit mit SI-Vorsatz nach dem größten Betrag (kurze Zeiträume liegen im pW-Bereich)
+  const u = unitOf(Math.max(...data.flatMap(d => SERIES.map(sr => Math.abs(d.v[sr.key])))), 'erf');
+  const nW = (w) => w / u.div;
   const all = data.flatMap(d => SERIES.map(sr => nW(d.v[sr.key])));
   let lo = Math.min(0, ...all), hi = Math.max(0, ...all);
   if (hi - lo < 1e-6) { hi = 1; lo = -1; }
@@ -51,6 +54,6 @@ export function renderAfterEffect(el, { row, years, params }) {
   el.append(svg,
     h('ul', { class: 'cc-legend' }, SERIES.map(sr => h('li', {},
       h('span', { class: `cc-swatch ${sr.cls}` }), `${sr.label}: ${fmtN(nW(start[sr.key]))} → ${fmtN(nW(end[sr.key]))}`))),
-    h('p', { class: 'fine' }, 'Values in nW m⁻²: at the end of the period → after 100 years. ',
+    h('p', { class: 'fine' }, `Values in ${u.label}: at the end of the period → after 100 years. `,
       'Sulphate fades within days, the NOₓ effects within about a decade; about a fifth of the CO₂ stays for centuries.'));
 }

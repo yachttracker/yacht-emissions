@@ -756,7 +756,7 @@ function masterData(y) {
   if (!y || !y.fields || !y.fields.length) return h('p', { class: 'fine' }, 'No master data.');
   return h('dl', { class: 'facts' }, y.fields.map(f => h('div', { class: 'fact' },
     h('dt', {}, f.label),
-    h('dd', {}, h('span', { class: 'fact-value' }, f.value === null || f.value === undefined ? '–' : `${f.key === 'mmsi' || f.key === 'imo' ? f.value : typeof f.value === 'number' ? fmt.int(f.value) : f.value}${f.unit ? ` ${f.unit}` : ''}`),
+    h('dd', {}, h('span', { class: 'fact-value' }, f.value === null || f.value === undefined ? '–' : `${['mmsi', 'imo', 'build_year', 'built_provider', 'built'].includes(f.key) ? f.value : typeof f.value === 'number' ? (Number.isInteger(f.value) ? fmt.int(f.value) : fmt.dec2(f.value)) : f.value}${f.unit ? ` ${f.unit}` : ''}`),
       statusChip(f.status), f.note ? h('span', { class: 'fact-note' }, f.note) : null))));
 }
 
