@@ -13,7 +13,7 @@
 //   5. Kraftstoff → CO2, SOx (kraftstoffbezogen); NOx (energiebezogen, mit LLF)   [Doc Gl. 3–7]
 //   6. Landstrom im Hafen: Anteil s_L der Hotellast mit Netzfaktor bewertet       [Doc Gl. 13]
 
-const CALC_VERSION = '2026-11-01-v3.2';
+const CALC_VERSION = '2026-11-15-v3.3';
 
 const envNum = (name, fallback) => {
   const v = Number(process.env[name]);
@@ -56,6 +56,12 @@ const PARAMS = {
   // Antriebsarten gleich. Annahme (physikalisch begründet, nicht belegt); mit Prof. Baumann
   // abzustimmen. ME_MIN_LOAD=0 stellt die IMO-Regel (unter 7 % = 0) wieder her (Sensitivität).
   ME_MIN_LOAD: envNum('ME_MIN_LOAD', 0.07),
+  // Rampe (v3.3, Paul 2026-11-15, Befund P-06): Die Mindestlast wird ab V_IDLE_KN linear eingeblendet
+  // und erreicht ME_MIN_LOAD erst dort, wo die Admiralitätsformel selbst ME_MIN_LOAD ergibt (v_min).
+  // Vorher sprang die Rate bei 2 kn auf 7 % MCR (Azzam: 0,19 → 3,8 t CO₂/h). Die Kurve ist so stetig
+  // und monoton; GPS-Rauschen vor Anker mit 2–3 kn zählt nur noch wenig. Form der Rampe: Annahme.
+  // ME_MIN_RAMP=false stellt die Stufe von v3.2 wieder her (Sensitivität).
+  ME_MIN_RAMP: process.env.ME_MIN_RAMP !== 'false',
   DRAUGHT_RATIO_RANGE: [0.5, 1.5], // unplausible Tiefgangsverhältnisse → Faktor 1 – Annahme
 
   // ── Betriebsphasen ──
@@ -211,6 +217,19 @@ function propulsionPower(prof, speedKnots, draughtM) {
   return { w_kw: w, load: prof.mcr_kw > 0 ? w / prof.mcr_kw : 0, draught_factor: tFactor };
 }
 
+// Mindestlast bei gegebener Geschwindigkeit (Anteil an MCR). Mit Rampe: 0 bei V_IDLE_KN, linear bis
+// ME_MIN_LOAD bei v_min, der Geschwindigkeit, bei der die Admiralitätsformel ME_MIN_LOAD ergibt.
+function minLoad(prof, speedKnots, draughtFactor = 1) {
+  const m = PARAMS.ME_MIN_LOAD;
+  if (!(m > 0)) return 0;
+  if (!PARAMS.ME_MIN_RAMP) return m;
+  const vMin = prof.v_ref_kn * Math.cbrt(m * PARAMS.ETA_W * PARAMS.ETA_F / (PARAMS.DELTA_W * draughtFactor));
+  const v0 = PARAMS.V_IDLE_KN;
+  if (!(vMin > v0)) return m;
+  const r = ((Number(speedKnots) || 0) - v0) / (vMin - v0);
+  return m * Math.min(Math.max(r, 0), 1);
+}
+
 // ── Hauptfunktion ───────────────────────────────────────────────────────────
 // yacht: Stammdaten aus fleet.js { length, mcr_kw?, vmax_kn?, gt?, build_year?, propulsion?,
 //        engine_class?, draught_ref_m?, diesel_kw?, switch_speed_kn? }
@@ -236,9 +255,9 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
   const shoreKw = pHotel * shoreShare;
 
   // Antrieb
-  let wMain = 0, load = 0;
+  let wMain = 0, load = 0, draughtFactor = 1;
   if (phase === 'underway' || phase === 'sailing') {
-    ({ w_kw: wMain, load } = propulsionPower(prof, speedKnots, ctx.draught));
+    ({ w_kw: wMain, load, draught_factor: draughtFactor } = propulsionPower(prof, speedKnots, ctx.draught));
   }
   if (phase === 'sailing') { wMain = 0; load = 0; } // nav_status 8: unter Segeln, Hauptantrieb aus
   if (prof.propulsion === 'sail_aux' && wMain > 0) {
@@ -246,11 +265,13 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
     wMain *= (1 - s); load *= (1 - s);
   }
 
-  // Mindestlast in Fahrt (siehe PARAMS.ME_MIN_LOAD); unter Segeln (Phase 'sailing') bleibt der Antrieb aus
-  if (phase === 'underway' && wMain > 0 && PARAMS.ME_MIN_LOAD > 0 && load < PARAMS.ME_MIN_LOAD && prof.mcr_kw > 0) {
-    load = PARAMS.ME_MIN_LOAD;
-    wMain = load * prof.mcr_kw;
+  // Mindestlast in Fahrt (siehe PARAMS.ME_MIN_LOAD, ME_MIN_RAMP); unter Segeln bleibt der Antrieb aus
+  if (phase === 'underway' && wMain > 0 && prof.mcr_kw > 0) {
+    const floor = minLoad(prof, speedKnots, draughtFactor);
+    if (load < floor) { load = floor; wMain = load * prof.mcr_kw; }
   }
+  // IMO4-Regel „unter 7 % Last aus“ nur ohne Mindestlast (Sensitivität ME_MIN_LOAD=0); sonst läuft der Antrieb
+  const offLoad = PARAMS.ME_MIN_LOAD > 0 ? 0 : PARAMS.ME_OFF_LOAD;
 
   let fuelMain = 0, fuelHotel = 0, noxMain = 0, noxHotel = 0; // g/h
 
@@ -275,18 +296,18 @@ function calcHourlyEmissions(yacht, speedKnots, navStatus, ctx = {}) {
       const wDiesel = Math.min(wMain, PARAMS.LOAD_CAP * dieselKw);
       const wTurbine = (Number(speedKnots) >= switchKn) ? wMain - wDiesel : 0;
       const loadD = wDiesel / dieselKw;
-      if (loadD >= PARAMS.ME_OFF_LOAD) {
+      if (loadD >= offLoad) {
         fuelMain += wDiesel * PARAMS.SFC_BASE[cls][sfcIdx] * sfcLoadCurve(loadD);
         noxMain += wDiesel * noxMe * llfNox(loadD);
       }
       fuelMain += wTurbine * PARAMS.SFC_GAS_TURBINE;
       noxMain += wTurbine * PARAMS.NOX_GAS_TURBINE;
-      wMain = (loadD >= PARAMS.ME_OFF_LOAD ? wDiesel : 0) + wTurbine;
-    } else if (load >= PARAMS.ME_OFF_LOAD) {
+      wMain = (loadD >= offLoad ? wDiesel : 0) + wTurbine;
+    } else if (load >= offLoad) {
       fuelMain = wMain * PARAMS.SFC_BASE[cls][sfcIdx] * sfcLoadCurve(load);
       noxMain = wMain * noxMe * llfNox(load);
     } else {
-      wMain = 0; // IMO4: unter 7 % Last keine Hauptmaschinenemissionen (nur noch bei ME_MIN_LOAD < 0,07)
+      wMain = 0; // IMO4: unter 7 % Last keine Hauptmaschinenemissionen (nur bei ME_MIN_LOAD = 0)
     }
     fuelHotel = pHotelOnboard * sfcAux;
     noxHotel = pHotelOnboard * PARAMS.NOX_AUX;
@@ -333,5 +354,5 @@ function mainEngineLoad(speedKnots, vMaxKnots) {
 module.exports = {
   calcHourlyEmissions, operatingPhase, resolveProfile, propulsionPower,
   volumeFromGT, gtFromLength, hotelLoadRef, sfcLoadCurve, llfNox, noxFactor,
-  mainEngineLoad, estimateMCRFromLength, PARAMS, CALC_VERSION,
+  mainEngineLoad, estimateMCRFromLength, minLoad, PARAMS, CALC_VERSION,
 };

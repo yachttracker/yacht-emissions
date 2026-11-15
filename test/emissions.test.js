@@ -69,13 +69,30 @@ test('Fall D: dieselbe Yacht dieselelektrisch (η_el = 1)', () => {
   assert.ok(r.co2_kg_h < E.calcHourlyEmissions(example, 12, 0).co2_kg_h, 'dieselelektrisch günstiger als A');
 });
 
-test('IMO-Regeln: Mindestlast 7 % in Fahrt (v3.1), Deckel 98 %, SOG > 1,5 v_ref', () => {
-  // 7 kn bei v_ref 18: Last ≈ 0,074 → unverändert; 6,5 kn → ≈ 0,069 → auf 7 % angehoben
+test('IMO-Regeln: Mindestlast 7 % in Fahrt mit Rampe (v3.3), Deckel 98 %, SOG > 1,5 v_ref', () => {
+  // v_ref 18 kn: Admiralitätsformel ergibt 7 % bei v_min = 18 · (0,07 · 0,867 · 0,917)^(1/3) ≈ 6,87 kn.
+  // Mindestlast steigt linear von 0 bei 2 kn auf 7 % bei v_min (kein Sprung bei 2 kn mehr).
+  const vMin = 18 * Math.cbrt(0.07 * 0.867 * 0.917);
   assert.ok(E.calcHourlyEmissions(example, 7, 0).fuel_main_kg_h > 0);
   const slow = E.calcHourlyEmissions(example, 6.5, 0);
-  near(slow.me_load, 0.07, 1e-12, 'Mindestlast');
-  near(slow.p_main_kw, 0.07 * 8000, 1e-9, 'W = 7 % MCR');
+  near(slow.me_load, 0.07 * (6.5 - 2) / (vMin - 2), 1e-9, 'Mindestlast auf der Rampe');
   assert.ok(slow.fuel_main_kg_h > 0);
+  near(E.calcHourlyEmissions(example, vMin, 0).me_load, 0.07, 1e-9, 'Rampe endet bei 7 % = Admiralitätsformel');
+  assert.ok(E.calcHourlyEmissions(example, 2.05, 0).me_load < 0.002, 'knapp über 2 kn fast keine Antriebslast');
+  // monoton und stetig ab 2 kn
+  let prev = 0;
+  for (let v = 2.01; v <= 27; v += 0.01) {
+    const c = E.calcHourlyEmissions(example, v, 0).co2_kg_h;
+    assert.ok(c >= prev - 1e-9, `nicht monoton bei ${v.toFixed(2)} kn`);
+    if (prev) assert.ok(c - prev < 0.05 * prev, `Sprung bei ${v.toFixed(2)} kn`);
+    prev = c;
+  }
+  // Stufe von v3.2 (Sensitivität ME_MIN_RAMP=false): ab 2 kn sofort 7 % MCR
+  const savedRamp = E.PARAMS.ME_MIN_RAMP;
+  try {
+    E.PARAMS.ME_MIN_RAMP = false;
+    near(E.calcHourlyEmissions(example, 6.5, 0).p_main_kw, 0.07 * 8000, 1e-9, 'Stufe: W = 7 % MCR');
+  } finally { E.PARAMS.ME_MIN_RAMP = savedRamp; }
   // kein Sprung mehr zwischen 6 und 6,5 kn; dieselelektrisch und dieselmechanisch gleich behandelt
   const dm6 = E.calcHourlyEmissions(example, 6, 0), de6 = E.calcHourlyEmissions({ ...example, propulsion: 'diesel_electric' }, 6, 0);
   assert.ok(dm6.fuel_main_kg_h > 0 && de6.fuel_main_kg_h > 0);
