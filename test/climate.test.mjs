@@ -46,3 +46,14 @@ test('Nachwirkung: ERF am Ende eines Jahres gleichmäßiger Emission (Rekursion 
   near(late.so2, 0, 1e-15, 'SO2 nach 100 a verschwunden');
   assert.ok(late.co2 > 0.4 * f.co2, 'CO2 bleibt großteils');
 });
+
+test('Strahlungsantrieb: integriert = CO2e · AGWP_CO2, am Periodenende = Nachwirkung bei t = 0', () => {
+  const row = { co2_kg_total: 3.206e6, fuel_kg_total: 1e6, sox_kg_total: 2000, nox_kg_total: 50000 };
+  for (const horizon of [20, 100]) {
+    const o = { horizon };
+    near(C.erfIntegrated(row, o), C.co2e(row, 'all', o) * C.agwpCO2(horizon), 1e-18, `integriert H=${horizon}`);
+  }
+  near(C.erfNow(row, 1, {}), C.afterEffect(row, 1, 0, {}).total, 1e-20, 'ERF am Periodenende');
+  // unabhängig vom Horizont
+  assert.equal(C.erfNow(row, 1, { horizon: 20 }), C.erfNow(row, 1, { horizon: 100 }));
+});

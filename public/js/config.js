@@ -11,21 +11,30 @@ export const CATEGORIES = {
 
 // Metriken. field = Summenfeld aus /api/emissions/summary (kg).
 // select:true = im Auswahlfeld „Metric“ (Ranking); alle enabled-Metriken erscheinen in Tabellenansicht und Detailpanel.
-// Entscheidung Paul 15.11.2026: Auswahl nur „Global warming potential“ (Standard) und „Climate impact“.
+// kind = Größenart für die Einheit (format.js unitOf): mass, co2e, erf (W m⁻²), erfInt (W m⁻²·a).
+// Entscheidung Paul 15.11.2026: Auswahl „Global warming potential“ (Standard) und „Climate impact“;
+// ergänzt 15.11.2026 (Abgleich Aufgabenstellung, TA 3): Strahlungsantrieb als eigene Größe in W m⁻² bzw. W m⁻²·a.
 export const METRICS = [
   // Klimawirkung (Entscheidung Paul 12.11.2026, claude/recherche/erf_methodik_v2.md): berechnet im Browser
   // aus den Summen (public/js/climate.js), Zeithorizont und Faktoren per Schieberegler.
-  // 'ghg' = nur Treibhausgase CO2 + N2O (A); 'all' = Strahlenbilanz-Zahl mit SO2 und NOx (B).
-  { key: 'ghg', label: 'Global warming potential (CO₂e)', long: 'Global warming potential: CO₂ + N₂O (CO₂e)', phrase: 'global warming potential (CO₂e)',
-    climate: 'ghg', enabled: true, select: true,
-    hint: 'Greenhouse gases CO₂ and N₂O, weighted by their global warming potential (GWP).' },
-  { key: 'climate', label: 'Climate impact (CO₂e)', long: 'Climate impact incl. SO₂ and NOₓ (CO₂e)', phrase: 'climate impact (CO₂e)',
-    climate: 'all', enabled: true, select: true,
-    hint: 'CO₂ and N₂O plus the short-lived effects of sulphate (SO₂) and NOₓ: radiative forcing integrated over the horizon, expressed as CO₂e.' },
+  // 'ghg' = CO2e nur Treibhausgase CO2 + N2O (A); 'all' = CO2e mit SO2 und NOx (B);
+  // 'erfInt' = integrierter Strahlungsantrieb (W m⁻²·a); 'erfNow' = Strahlungsantrieb am Ende des Zeitraums (W m⁻²).
+  { key: 'ghg', label: 'Global warming potential', long: 'Global warming potential: CO₂ + N₂O', phrase: 'global warming potential',
+    climate: 'ghg', kind: 'co2e', unitName: 't CO₂e', enabled: true, select: true,
+    hint: 'Greenhouse gases CO₂ and N₂O, weighted by their global warming potential (GWP), in tonnes of CO₂ equivalent.' },
+  { key: 'climate', label: 'Climate impact', long: 'Climate impact incl. SO₂ and NOₓ', phrase: 'climate impact',
+    climate: 'all', kind: 'co2e', unitName: 't CO₂e', enabled: true, select: true,
+    hint: 'CO₂ and N₂O plus the short-lived effects of sulphate (SO₂) and NOₓ, each weighted by its GWP over the horizon, in tonnes of CO₂ equivalent. Not a radiative forcing; see the two radiative forcing metrics for that.' },
+  { key: 'erf_int', label: 'Radiative forcing, time-integrated', long: 'Radiative forcing integrated over the horizon, all substances',
+    phrase: 'time-integrated radiative forcing', climate: 'erfInt', kind: 'erfInt', unitName: 'W m⁻²·a', enabled: true, select: true,
+    hint: 'Radiative forcing caused by the CO₂, N₂O, sulphate (SO₂) and NOₓ emitted in the period, summed over the horizon (W m⁻² × years). Effective radiative forcing for SO₂, radiative forcing for NOₓ.' },
+  { key: 'erf', label: 'Radiative forcing at period end', long: 'Radiative forcing at the end of the period, all substances',
+    phrase: 'radiative forcing at the end of the period', climate: 'erfNow', kind: 'erf', unitName: 'W m⁻²', enabled: true, select: false,   // nicht im Ranking: am Periodenende meist negativ (Sulfat), Rangfolge wäre irreführend
+    hint: 'Radiative forcing at the end of the period caused by the emissions in the period (W m⁻²). Short-lived sulphate (cooling) and ozone from NOₓ (warming) dominate; independent of the horizon.' },
   { key: 'co2', label: 'CO₂', long: 'Carbon dioxide (CO₂)', phrase: 'CO₂', field: 'co2_kg_total', enabled: true },
   { key: 'fuel', label: 'Fuel', long: 'Fuel burned', phrase: 'fuel burned', field: 'fuel_kg_total', enabled: true },
-  { key: 'nox', label: 'NOₓ', long: 'Nitrogen oxides (NOₓ)', phrase: 'NOₓ', field: 'nox_kg_total', enabled: true },
-  { key: 'sox', label: 'SOₓ', long: 'Sulphur oxides (SOₓ)', phrase: 'SOₓ', field: 'sox_kg_total', enabled: true },
+  { key: 'nox', label: 'NOₓ as NO₂', long: 'Nitrogen oxides (NOₓ), mass as NO₂', phrase: 'NOₓ (as NO₂)', field: 'nox_kg_total', enabled: true },   // IMO4-Faktoren in g NO2/kWh
+  { key: 'sox', label: 'SOₓ as SO₂', long: 'Sulphur oxides (SOₓ), mass as SO₂', phrase: 'SOₓ (as SO₂)', field: 'sox_kg_total', enabled: true },   // IMO4 Gl. 15: Masse als SO2
 ];
 
 // Zeiträume (Backend: lib/periods.js). Kalendergrenzen in UTC.

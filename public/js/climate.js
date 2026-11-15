@@ -85,6 +85,20 @@ export function co2e(row, scope = 'all', opts = {}) {
   return scope === 'ghg' ? p.co2 + p.n2o : p.co2 + p.n2o + p.so2 + p.nox;
 }
 
+// ── Strahlungsantrieb als eigene Kennzahlen (Aufgabenstellung: „Quantifizierung von Emissionen und
+// Strahlungsantrieb“, TA 3) ──────────────────────────────────────────────────────
+// Über den Horizont H integrierter Strahlungsantrieb aller Stoffe (W m-2 a):
+// Σ E_i · AGWP_i(H) = CO2e(alle Stoffe) · AGWP_CO2(H) (identisch nach Definition GWP = AGWP_i/AGWP_CO2).
+export function erfIntegrated(row, opts = {}) {
+  const o = { ...DEFAULTS, ...opts };
+  return co2e(row, 'all', o) * agwpCO2(o.horizon);
+}
+// Strahlungsantrieb am Ende des Zeitraums (W m-2) durch die im Zeitraum emittierten Mengen;
+// D = Länge des Zeitraums in Jahren. Unabhängig vom Horizont.
+export function erfNow(row, D, opts = {}) {
+  return afterEffect(row, D, 0, opts).total;
+}
+
 // ── Nachwirkung: Strahlungsantrieb (W m-2) der im Zeitraum emittierten Mengen ──
 // Annahme: Emission gleichmäßig über den Zeitraum der Länge D (Jahre) verteilt (exakt für konstante Rate).
 // t = Jahre nach Ende des Zeitraums. Rückgabe je Stoff und Summe.
