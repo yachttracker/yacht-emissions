@@ -133,7 +133,7 @@ export function renderRateChart(container, { points, t0, t1, gapMs, label = 'COâ
         h('strong', {}, fmt.rate(sg.v)),
         h('span', {}, `${fmt.dateTime(sg.p.t)}`),
         h('span', {}, sg.p.speed !== null ? `Speed ${fmt.dec1(sg.p.speed)} kn` : ''),
-        h('span', { class: 'muted' }, sg.p.n > 1 ? `Average of ${sg.p.n} reports` : sg.p.source === 'history' ? 'Track history' : 'Live report'),
+        h('span', { class: 'muted' }, sg.p.n > 1 ? `Average of ${sg.p.n} reports` : sg.p.source === 'history' ? 'Track history' : sg.p.source === 'live' ? 'Live report' : 'Hourly average'),
       );
       tip.style.left = `${Math.min(Math.max(tx, 90), W - 90)}px`;
       tip.classList.add('on');

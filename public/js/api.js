@@ -96,7 +96,7 @@ export async function getHistory(mmsi, w, { maxPoints = 1500, ...opts } = {}) {
     meta: body.meta,
     points: (body.points || []).map(q => ({
       t: new Date(q.timestamp).getTime(), lat: num(q.latitude), lon: num(q.longitude),
-      speed: num(q.speed_knots), co2: num(q.co2_kg_h), fuel: num(q.fuel_kg_h), source: q.source, n: num(q.n) || 1,
+      speed: num(q.speed_knots), co2: num(q.co2_kg_h), fuel: num(q.fuel_kg_h), source: q.source || null, n: num(q.n) || 1,
     })),
   };
 }

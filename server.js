@@ -192,6 +192,11 @@ function connectAIS() {
 // Mit Zugang (Cookie, ?access=, x-site-access, Basic) bleibt alles wie im privaten Modus.
 const PUBLIC_MIN_BUCKET_S = Number(process.env.PUBLIC_MIN_BUCKET_S) || 3600;
 const publicView = (req) => siteMode() === 'public' && !req.siteTrusted;
+// Öffentlich keine Meldezeitpunkte einzelner AIS-Meldungen (Prüfbericht 15.11.2026, P-02):
+// Zeitangaben auf die volle Stunde abgerundet (UTC).
+const PUBLIC_TIME_STEP_MS = 3600000;
+const coarseTime = (v) => (v ? new Date(Math.floor(new Date(v).getTime() / PUBLIC_TIME_STEP_MS) * PUBLIC_TIME_STEP_MS).toISOString() : v);
+const coarseRange = (r) => ({ ...r, data_from: coarseTime(r.data_from), data_to: coarseTime(r.data_to) });
 // true → Antwort gesendet (Rohdaten-Endpunkt ohne Zugang im öffentlichen Modus)
 function deniedRaw(req, res) {
   if (!publicView(req)) return false;
@@ -231,13 +236,17 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
     const maxPoints = Math.min(Math.max(Number(req.query.max_points) || 0, 0), 5000);
     const pub = publicView(req);
     const h = await dash.history(mmsi, win, maxPoints, { minBucketS: pub ? PUBLIC_MIN_BUCKET_S : 0 });
-    if (pub) h.points = h.points.map(({ latitude, longitude, speed_knots, ...rest }) => rest);
-    if (!wantsMeta(req)) return res.json(h.points);
-    const range = await dash.yachtRange(mmsi);
+    // Öffentlich nur Stundenmittel der berechneten Raten: Zeitstempel = Beginn der Stunde (statt Zeitpunkt
+    // der ersten Meldung), ohne Position, Geschwindigkeit, Quelle und Meldungsanzahl (P-02).
+    const points = pub
+      ? h.points.map(p => ({ timestamp: new Date(p.bucket_start).toISOString(), co2_kg_h: p.co2_kg_h, fuel_kg_h: p.fuel_kg_h }))
+      : h.points.map(({ bucket_start, ...rest }) => rest);
+    if (!wantsMeta(req)) return res.json(points);
+    const range = pub ? coarseRange(await dash.yachtRange(mmsi)) : await dash.yachtRange(mmsi);
     res.json({
       meta: { mmsi, ...windowMeta(win), ...range, points_raw: h.points_raw,
               downsampled: h.bucket_s > 0, bucket_s: h.bucket_s },
-      points: h.points,
+      points,
     });
   } catch (err) {
     sendError(res, err);
@@ -283,14 +292,16 @@ app.get('/api/emissions/summary', async (req, res) => {
     const fresh = resolveWindow(req.query);      // prüft Parameter auch bei Cache-Treffer
     const { win, rows } = await dash.cache(`sum:${CFG.dataset}:${windowKey(req.query)}`,
       async () => ({ win: fresh, rows: await integrateEmissions(fresh) }));
-    if (!wantsMeta(req)) return res.json(rows);
-    const range = await dash.dataRange();
+    const pub = publicView(req);
+    const out = pub ? rows.map(r => ({ ...r, last_seen: coarseTime(r.last_seen) })) : rows;
+    if (!wantsMeta(req)) return res.json(out);
+    const range = pub ? coarseRange(await dash.dataRange()) : await dash.dataRange();
     res.json({
       meta: { ...windowMeta(win), ...range, dataset: CFG.dataset, calc_version: CALC_VERSION,
               yachts_tracked: YACHTS.length, yachts_with_data: rows.length,
               ...stays.stayMeta(STAY, ZONES),
               visibility: req.ownerView },
-      rows: rows.map(r => ({ ...r, flag_code: dash.flagCode(r.flag), category: 'yacht' })),
+      rows: out.map(r => ({ ...r, flag_code: dash.flagCode(r.flag), category: 'yacht' })),
     });
   } catch (err) {
     sendError(res, err);
@@ -303,9 +314,11 @@ app.get('/api/fleet', async (req, res) => {
   try {
     let [yachts, range] = await Promise.all([dash.fleet(), dash.dataRange()]);
     if (publicView(req)) {
-      // ohne letzte Position und ohne Anbieter-Stammdaten (Rohdaten); Kopien, der Cache bleibt unverändert
-      yachts = yachts.map(({ last_position, ...y }) => ({ ...y, last_position: null,
+      // ohne letzte Position, ohne Anbieter-Stammdaten (Rohdaten), Zeiten auf die Stunde gerundet;
+      // Kopien, der Cache bleibt unverändert
+      yachts = yachts.map(({ last_position, ...y }) => ({ ...y, last_position: null, last_seen: coarseTime(y.last_seen),
         fields: y.fields.filter(f => f.status !== 'provider') }));
+      range = coarseRange(range);
     }
     res.json({
       meta: { ...range, dataset: CFG.dataset, provider: CFG.provider, calc_version: CALC_VERSION,
