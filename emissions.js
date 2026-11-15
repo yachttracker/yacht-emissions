@@ -49,8 +49,8 @@ const PARAMS = {
   DRAUGHT_EXP: 0.66, SPEED_EXP: 3,
   LOAD_CAP: 0.98,          // Last > 100 % → 98 % – belegt: IMO4 S. 65
   SOG_CAP_FACTOR: 1.5,     // SOG > 1,5 · v_ref → v_ref – belegt: IMO4 S. 65
-  ME_OFF_LOAD: 0.07,       // Hauptmaschine < 7 % Last → 0 – Wert belegt: IMO4, Text vor Tab. 20
-                           // (S. 73/74, Seitenangabe zu prüfen). Übertragung auf Yachten: Annahme.
+  ME_OFF_LOAD: 0.07,       // Hauptmaschine < 7 % Last → 0 – belegt: IMO4 S. 72 (Prüfbericht IMO4-Werte
+                           // 15.11.). Übertragung auf Yachten: Annahme.
   // Mindestlast in Fahrt (v3.1, Entscheidung Paul 2026-10-31, Prüfbericht K2): Fährt die Yacht
   // (> V_IDLE_KN), läuft der Antrieb; eine Last unter 7 % wird auf 7 % angehoben – für alle
   // Antriebsarten gleich. Annahme (physikalisch begründet, nicht belegt); mit Prof. Baumann

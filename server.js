@@ -451,9 +451,19 @@ function startScheduler() {
   const sch = computeSchedule(CFG, YACHTS.length, provider.COSTS);
   if (sch.over_budget) console.warn(`[ABRUF] WARNUNG: geplant ${sch.projected_month_31d} Credits > Budget ${CFG.monthBudget}`);
   const hours = sch.hours_utc.join(',');
+  // Live-Abruf: läuft noch ein anderer Abruf (z. B. Rückwärtsabruf am Periodenende), alle 10 min neu
+  // versuchen, höchstens POLL_RETRIES-mal (P-08, 15.11.); sonst fiele der Abruf ersatzlos aus.
+  const POLL_RETRIES = 6;
+  const pollWithRetry = (extended, attempt = 0) => runJob('poll', { extended }).then(r => {
+    if (r && r.skipped === 'anderer Abruf läuft') {
+      if (attempt < POLL_RETRIES) {
+        console.log(`[ABRUF] poll verschoben (anderer Abruf läuft), Versuch ${attempt + 2} in 10 min`);
+        setTimeout(() => pollWithRetry(extended, attempt + 1), 600000);
+      } else console.warn(`[ABRUF] poll ausgefallen: nach ${POLL_RETRIES} Wiederholungen lief noch ein anderer Abruf`);
+    }
+  }).catch(e => console.error('[ABRUF] poll', e.message));
   cron.schedule(`7 ${hours} * * *`, () => {
-    const extended = CFG.liveExtended && new Date().getUTCHours() === sch.extended_hour_utc;
-    runJob('poll', { extended }).catch(e => console.error('[ABRUF] poll', e.message));
+    pollWithRetry(CFG.liveExtended && new Date().getUTCHours() === sch.extended_hour_utc);
   }, { timezone: 'Etc/UTC' });
   cron.schedule(`23 ${CFG.historyHourUtc} * * *`, () => {
     runJob('history').catch(e => console.error('[ABRUF] history', e.message));

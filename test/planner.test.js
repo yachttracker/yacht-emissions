@@ -70,6 +70,23 @@ test('K1: zweiter Teilabruf scheitert → Teilergebnis gespeichert, je Teilabruf
   assert.equal(pos.rows[0].c, 100, 'bezahlte Positionen des ersten Teils sind gespeichert');
 });
 
+test('P-09: Ortswechsel gegen eine sehr alte Meldung markiert nur den Lookback als bewegt', async () => {
+  await clean();
+  const mmsi = String(YACHTS[0].mmsi);
+  await pool.query(`INSERT INTO positions (mmsi, latitude, longitude, speed_knots, timestamp, source, dataset)
+                    VALUES ($1, 10, 10, 0, '2025-10-03T12:00:00Z', 'live', $2)`, [mmsi, DS]);
+  global.fetch = async (url) => {
+    const ids = new URL(url).searchParams.get('mmsi').split(',');
+    return respond(200, { status: 'success', data: ids.map(bulkItem) }, ids.length);
+  };
+  const cfg = cfgFor();
+  await planner.pollLive(pool, mst, cfg, { now: new Date('2026-10-31T12:05:00Z') });
+  const r = await pool.query(`SELECT MIN(day)::text AS first, COUNT(*)::int AS n FROM vessel_days
+                               WHERE dataset = $1 AND mmsi = $2 AND moved`, [DS, mmsi]);
+  assert.equal(r.rows[0].n, cfg.lookbackDays + 1, 'nur Lookback-Tage plus heute');
+  assert.equal(r.rows[0].first, '2026-10-24');
+});
+
 test('K1: alle Teilabrufe scheitern → Fehler, trotzdem Log-Einträge', async () => {
   await clean();
   global.fetch = async () => respond(401, { status: 'error', code: 'ERR_INVALID_KEY', message: 'bad key' });
