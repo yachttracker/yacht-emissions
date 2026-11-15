@@ -41,7 +41,7 @@ before(async () => {
     for (const p of s.points) {
       await pool.query(`INSERT INTO positions (mmsi, name, latitude, longitude, speed_knots, co2_kg_h, nox_kg_h,
                           sox_kg_h, fuel_kg_h, timestamp, source, dataset)
-                        VALUES ($1, $2, $3, $4, $5, $6, $6 / 30.0, $6 / 300.0, $6 / 3.206, $7, $8, $9)`,
+                        VALUES ($1, $2, $3, $4, $5, $6::float8, $6::float8 / 30, $6::float8 / 300, $6::float8 / 3.206, $7, $8, $9)`,
       [s.mmsi, s.id, p.lat, p.lon, p.sog, p.co2, p.ts, p.source, DS]);
     }
     for (const [d, status] of s.days || []) {
