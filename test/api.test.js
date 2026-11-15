@@ -263,7 +263,7 @@ test('History: Fenster, Metadaten, Verdichtung für die Anzeige', async () => {
 });
 
 test('Öffentliche Ansicht: keine AIS-Rohdaten ohne Zugang (Datalastic §8)', async () => {
-  for (const p of ['/api/yachts/latest', '/api/identity', '/api/review']) {
+  for (const p of ['/api/yachts/latest', '/api/identity', '/api/review', '/api/stays']) {
     const x = await get(p);
     assert.equal(x.status, 403, p);
     assert.equal((await get(p, T())).status, 200, `${p} mit Zugang`);

@@ -120,3 +120,21 @@ test('Beleg aus tracking_state.csv: nur Pausen wegen refit/seized/laid_up', () =
   ];
   assert.deepEqual(tracking.layupEvidence(rows).map(e => e.mmsi), ['1', '4']);
 });
+
+test('Liegeorte (/api/stays): Episoden ≥ 72 h nach Ort zusammengefasst, Zonen erkannt', async () => {
+  const { listStays } = require('../lib/staylist');
+  const places = await listStays(pool, { dataset: DS, zones: ZONES, minHours: 72, now: new Date(NOW) });
+  const byZone = (k) => places.find(p => p.zone && p.zone.kind === k);
+  const names = (p) => p.yachts.map(y => y.name).sort();
+  const port = byZone('port');
+  assert.ok(port, 'Hafen gefunden');
+  for (const id of ['S1', 'S2', 'S3', 'S4', 'S10']) assert.ok(names(port).includes(id), `${id} im Hafen`);
+  assert.ok(port.open_now.some(o => o.name === 'S2'), 'S2 schweigt seit 20.11. (offen)');
+  const yard = byZone('yard');
+  assert.deepEqual(names(yard), ['S12', 'S5'], 'Werft: S5 und S12; S6 nur 48 h → nicht aufgeführt');
+  const anchor = places.find(p => !p.zone && names(p).includes('S11'));
+  assert.ok(anchor, 'Ankerplatz ohne Zone');
+  for (const id of ['S7', 'S8', 'S9']) assert.ok(names(anchor).includes(id), `${id} vor Anker`);
+  assert.ok(anchor.radius_sm_suggested >= 0.3);
+  assert.match(anchor.csv, /^;\d+\.\d{4};\d+\.\d{4};\d+(\.\d)?;;$/);
+});

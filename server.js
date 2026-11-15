@@ -263,6 +263,7 @@ function sendError(res, err) {
 // Orte: data/ports.csv, data/yards.csv (lib/zones.js); belegte Lay-ups: data/tracking_state.csv.
 const stays = require('./lib/integrate');
 const { loadZones } = require('./lib/zones');
+const { listStays, CLUSTER_SM } = require('./lib/staylist');
 const STAY = stays.stayParams();          // beim Start geprüft
 const ZONES = loadZones();                // fehlerhafte CSV → Start schlägt fehl (CI fängt es ab)
 
@@ -361,6 +362,20 @@ app.get('/api/review', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     res.json(await tracking.review(pool, CFG.dataset, { identityLatest: await identity.latest(pool, CFG.dataset) }));
+  } catch (err) { serverError(res, err); }
+});
+
+// Liegeorte aus den eigenen Daten (lib/staylist.js): Grundlage für data/ports.csv und data/yards.csv.
+// Nur mit Zugang (enthält Positionen = Rohdaten). ?min_hours=72 (Standard)
+app.get('/api/stays', async (req, res) => {
+  if (deniedRaw(req, res)) return;
+  try {
+    const minHours = Math.max(1, Math.min(Number(req.query.min_hours) || STAY.yardMinHours, 24 * 365));
+    res.set('Cache-Control', 'no-store');
+    const places = await listStays(pool, { dataset: CFG.dataset, zones: ZONES, minHours,
+      vKn: STAY.stationaryVKn, distSm: STAY.stationaryDistSm });
+    res.json({ dataset: CFG.dataset, min_hours: minHours, cluster_sm: CLUSTER_SM,
+      csv_header: 'name;lat;lon;radius_sm;source_url;note', places });
   } catch (err) { serverError(res, err); }
 });
 
