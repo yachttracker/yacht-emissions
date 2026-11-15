@@ -334,11 +334,16 @@ app.get('/api/status', async (_, res) => {
              -- Kontrolle der Erkennung an Tagen mit Historie
              COUNT(*) FILTER (WHERE history_moved AND moved)::int      AS hist_moved_detected,
              COUNT(*) FILTER (WHERE history_moved AND NOT moved)::int  AS hist_moved_missed,
+             -- Plausibilität (15.11.2026): leere Historie und Bewegung laut Live-Abruf widersprechen sich
+             COUNT(*) FILTER (WHERE history_status = 'empty')::int     AS history_empty,
+             COUNT(*) FILTER (WHERE moved AND history_status = 'empty')::int AS moved_but_empty,
              MAX(updated_at) AS last_update
         FROM vessel_days WHERE dataset = $1 AND day > (NOW() AT TIME ZONE 'UTC')::date - 30`, [CFG.dataset]);
     res.json({ provider: CFG.provider, dataset: CFG.dataset, dry_run: CFG.dryRun,
                schedule: provider ? computeSchedule(CFG, YACHTS.length, provider.COSTS) : null,
                history_hour_utc: CFG.historyHourUtc, history_timegroup_min: CFG.timegroupMin,
+               history_lookback_days: CFG.lookbackDays,
+               backfill: { days: CFG.backfillDays, from: CFG.backfillFrom, order: CFG.backfillOrder, tail_days: CFG.backfillTailDays },
                credits: st, last_30_days: days.rows[0] });
   } catch (err) {
     serverError(res, err);

@@ -51,8 +51,8 @@ Railway-Variablen für den Umstieg:
 | `HISTORY_BACKFILL_DAYS` / `HISTORY_BACKFILL_FROM` | z. B. `2000` / `2025-01-01` |
 | entfernen | `PROVIDER_TRIAL`, `HISTORY_MAX_DAYS`, `MST_API_KEY` |
 
-Optional: `DL_ID_TYPE` (`imo` | `mmsi`), `DL_HISTORY_TO_EXCLUSIVE` (`true`, falls `to` exklusiv ist;
-im Trial am Header `X-Request-Cost` prüfen), `DL_LOG_RAW` (`false` schaltet das einmalige Rohantwort-Log ab),
+Optional: `DL_ID_TYPE` (`imo` | `mmsi`), `DL_HISTORY_TO_EXCLUSIVE` (Notschalter `false`; Standard:
+`to` exklusiv, belegt 15.11.2026, der Code übergibt den Folgetag), `DL_LOG_RAW` (`false` schaltet das einmalige Rohantwort-Log ab),
 `DL_TIMEOUT_MS`.
 
 ### Liegezeit und Liegezustände (Zeitintegration, `lib/integrate.js`)

@@ -186,7 +186,7 @@ function dlRespond(status, body, cost) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-test('Datalastic: Regel-Historie je Yacht ein Aufruf mit from = to, leere Tage kostenlos', async () => {
+test('Datalastic: Regel-Historie je Yacht ein Aufruf, to = Folgetag (exklusiv), leere Tage kostenlos', async () => {
   await clean();
   const urls = [];
   global.fetch = async (url) => {
@@ -203,7 +203,7 @@ test('Datalastic: Regel-Historie je Yacht ein Aufruf mit from = to, leere Tage k
   const r = await planner.runHistory(pool, dl, cfg, { now: new Date('2026-11-10T03:30:00Z') });
   assert.equal(urls.length, YACHTS.length, 'ein Aufruf je Yacht');
   assert.ok(urls.every(u => u.pathname === '/api/v0/vessel_history' && u.searchParams.get('from') === '2026-11-09'
-    && u.searchParams.get('to') === '2026-11-09' && u.searchParams.get('days') === null));
+    && u.searchParams.get('to') === '2026-11-10' && u.searchParams.get('days') === null));
   assert.equal(r.days_done + r.days_empty, YACHTS.length);
   assert.ok(r.days_empty > 0 && r.days_done > 0);
   assert.equal(r.charged, r.days_done * 2, '2 Credits je Tag mit Daten');
@@ -213,13 +213,44 @@ test('Datalastic: Regel-Historie je Yacht ein Aufruf mit from = to, leere Tage k
   assert.ok(!notes.some(x => /Datensatzlimit/.test(x.note || '')), 'keine MST-Datensatzwarnung');
 });
 
+test('Datalastic: leere Tage werden am Folgetag genau einmal erneut abgefragt (kostenlos)', async () => {
+  await clean();
+  const now = new Date();                                  // history_at ist die echte Uhrzeit
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 86400000)
+    .toISOString().slice(0, 10);
+  const froms = [];
+  global.fetch = async (url) => {
+    froms.push(new URL(url).searchParams.get('from'));
+    return dlRespond(200, { data: { positions: [] }, meta: { success: true } }, 0);
+  };
+  const cfg = dlCfg({ lookbackDays: 2 });
+  const r1 = await planner.runHistory(pool, dl, cfg, { now });
+  assert.equal(r1.days_empty, 2 * YACHTS.length, 'erster Lauf: alles leer');
+  assert.equal(r1.charged, 0);
+  // Gestern wurde < 24 h nach Tagesende abgefragt → erneut; vorgestern nicht
+  const c = await planner.buildHistoryCandidates(pool, cfg, { now });
+  assert.equal(c.length, YACHTS.length, 'nur gestern erneut');
+  assert.ok(c.every(x => x.day === yesterday && x.prio === 2));
+  // Simulierter Abruf 30 h nach Tagesende → kein weiterer Versuch
+  await pool.query(`UPDATE vessel_days SET history_at = $2::date + interval '54 hours' WHERE dataset = $1`, [DS, yesterday]);
+  assert.equal((await planner.buildHistoryCandidates(pool, cfg, { now })).length, 0);
+  assert.equal(planner.emptyNeedsRecheck({ history_status: 'done', day: yesterday }), false);
+});
+
+test('Datalastic: Warnung bei überwiegend leeren Regel-Tagen', async () => {
+  await clean();
+  global.fetch = async () => dlRespond(200, { data: { positions: [] }, meta: { success: true } }, 0);
+  const r = await planner.runHistory(pool, dl, dlCfg({ lookbackDays: 1 }), { now: new Date('2026-11-10T03:30:00Z') });
+  assert.match(r.warning || '', /leer/);
+});
+
 test('Datalastic: Rückwärtsabruf in 30-Tage-Blöcken, Fenster bis 10.08.2021', async () => {
   await clean();
   const base = { backfillDays: 5000, backfillTailDays: 2, periodStartDay: 1, backfillFrom: null };
   const tail = await planner.planHistory(pool, dl, dlCfg(base), { now: new Date('2026-11-29T03:30:00Z') });
   assert.ok(tail.backfill.days > 0, 'Rückwärtsabruf aktiv');
   assert.ok(tail.backfill.from >= '2021-08-10' && tail.backfill.from <= '2021-08-12', `ältester Tag ${tail.backfill.from}`);
-  assert.ok(tail.backfill_calls.every(c => c.days.length <= 30));
+  assert.ok(tail.backfill_calls.every(c => c.days.length <= 29));
   assert.ok(tail.backfill_calls.some(c => c.days.length > 1), 'mehrere Tage je Abfrage');
   const from25 = await planner.planHistory(pool, dl, dlCfg({ ...base, backfillFrom: '2025-01-01' }), { now: new Date('2026-11-29T03:30:00Z') });
   assert.equal(from25.backfill.from, '2025-01-01');
