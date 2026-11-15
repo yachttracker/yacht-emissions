@@ -4,3 +4,8 @@
 # Vorgehen: Bauwerften der Flotte, dann Refit-Standorte; jede Zeile nur mit Quelle (source_url).
 # Koordinaten in Dezimalgrad (WGS84), Radius in Seemeilen (≤ 5). Änderungen nur per Commit/PR (Freigabe Paul).
 name;lat;lon;radius_sm;source_url;note
+MB92 La Ciotat;43.1711;5.6088;0.5;https://shipyards.marinelink.com/yard/mb92-ciotat;Koordinaten: AIS-Liegeort eigene Daten (15.11.2026: Ahpo, Sophia, A+, Dragonfly); Refitwerft mit Trockendock und Shiplift
+Lürssen Werft Hamburg (Blohm+Voss);53.5416;9.9545;0.4;https://www.boatinternational.com/boat-presents/lurssen-luxury-yacht-refit-hamburg-complex-superyacht-rebuilds;Koordinaten: AIS-Liegeort eigene Daten (15.11.2026: Kaos, Luna); Kaos laut Hafen Hamburg seit 08.09.2026 an der Werft (luxurylaunches.com)
+Feadship De Vries Makkum;53.0531;5.4015;0.3;https://feadship.nl/insights/iconic-yachts-come-home-for-busy-refit-season;Koordinaten: AIS-Liegeort eigene Daten (15.11.2026: Ulysses); BOAT Pro führt Ulysses an der Refitwerft De Vries Makkum
+NCA Refit / The Italian Sea Group Marina di Carrara;44.0349;10.0398;0.3;https://superyachtnews.com/fleet/looks-like-putins-smells-like-putinsits-probably-putins;Koordinaten: AIS-Liegeort eigene Daten (15.11.2026: Scheherazade, seit 06.05.2022 beschlagnahmt)
+Oceanco Alblasserdam;51.8591;4.6555;0.3;https://issuu.com/the-superyacht-group/docs/tsr215/s/17902485;Koordinaten: AIS-Liegeort eigene Daten (15.11.2026: Bravo Eugenia); Zuordnung zu Oceanco über den Ort (Annahme)
