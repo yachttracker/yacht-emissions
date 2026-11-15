@@ -23,8 +23,17 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const SELECTABLE = METRICS.filter(m => m.enabled && m.select);
 const metricDef = () => SELECTABLE.find(m => m.key === state.metric) || SELECTABLE[0];
-// Wert einer Metrik für eine Summary-Zeile: Summenfeld (kg) oder berechnete Klimawirkung (kg CO2e)
-const valueOf = (m, row) => (!row ? null : m.climate ? climate.co2e(row, m.climate, state.climate) : m.field ? row[m.field] : null);
+// Wert einer Metrik für eine Summary-Zeile: Summenfeld (kg), CO2e (kg) oder Strahlungsantrieb (W m-2 bzw. W m-2 a)
+const valueOf = (m, row) => {
+  if (!row) return null;
+  if (m.climate === 'erfInt') return climate.erfIntegrated(row, state.climate);
+  if (m.climate === 'erfNow') return climate.erfNow(row, (row.period_h || 8760) / 8760, state.climate);
+  if (m.climate) return climate.co2e(row, m.climate, state.climate);
+  return m.field ? row[m.field] : null;
+};
+const kindOf = (m) => m.kind || 'mass';
+const usesHorizon = (m) => !!m.climate && m.climate !== 'erfNow';
+const horizonNote = (m) => (usesHorizon(m) ? `${state.climate.horizon}-year horizon` : null);
 const win = () => (state.period === 'custom'
   ? { period: 'custom', from: state.from, to: state.to }
   : { period: state.period, mode: state.mode });
@@ -281,7 +290,7 @@ function buildControls(root) {
 
   const metric = h('select', { id: 'f-metric', class: 'select', 'aria-label': 'Metric',
     onchange: (e) => { state.metric = e.target.value; renderAll(); refreshDetail({ refetch: false }); } },
-  SELECTABLE.map(m => h('option', { value: m.key, title: m.hint || null }, m.label)));
+  SELECTABLE.map(m => h('option', { value: m.key, title: m.hint || null }, m.unitName ? `${m.label} (${m.unitName})` : m.label)));
 
   const extra = [];
   for (const f of FILTERS.filter(x => x.enabled)) {
@@ -356,6 +365,8 @@ function syncClimateControls(root) {
   const c = state.climate;
   root.querySelector('#cc-hint').textContent = m.hint || '';
   root.querySelector('#cc-h').value = String(c.horizon);
+  root.querySelector('#cc-h').disabled = !usesHorizon(m);
+  root.querySelector('#cc-h').closest('.cc-field').classList.toggle('is-off', !usesHorizon(m));
   root.querySelector('#cc-h-out').textContent = `${c.horizon} years`;
   root.querySelector('#cc-so2').value = String(c.so2);
   root.querySelector('#cc-so2-out').textContent = `${fmt.dec1(c.so2)} mW m⁻² per Tg SO₂/yr`;
@@ -376,12 +387,12 @@ function renderKpis(rows, built) {
   const covH = rows.reduce((a, r) => a + (r.hasData ? r.coverage_h || 0 : 0), 0);
   const fleetCov = periodH && rows.length && state.summary.rows.length ? covH / (rows.length * periodH) : null;
   const top = withData.slice().sort((a, b) => b.value - a.value)[0];
-  const tm = fmt.mass(total);
+  const tm = fmt.quantity(total, kindOf(m));
   const empty = !withData.length;
 
   root.append(
     h('div', { class: 'kpi kpi-hero' },
-      h('p', { class: 'kpi-label' }, `${m.long}, total${m.climate ? `, ${state.climate.horizon}-year horizon` : ''}`),
+      h('p', { class: 'kpi-label' }, `${m.long}, total${horizonNote(m) ? `, ${horizonNote(m)}` : ''}`),
       h('p', { class: 'kpi-value' }, empty ? '–' : tm.num, empty ? '' : h('span', { class: 'kpi-unit' }, ` ${tm.unit}`)),
       h('p', { class: 'kpi-sub' }, `${periodLabel()}, model estimate`)),
     h('div', { class: 'kpi' },
@@ -489,14 +500,14 @@ function ownerCell(r, { compact = false } = {}) {
 
 function rankingList(rows, max) {
   const m = metricDef();
-  const unit = fmt.unitFor(max);
+  const unit = fmt.unitOf(max, kindOf(m));
   const ol = h('ol', { class: 'ranking', 'aria-label': `Ranking by ${m.label}` });
   for (const r of rows) {
     const selected = r.mmsi === state.selected;
     const bar = h('span', { class: 'bar-track' }, r.segments.map(sg => h('span', {
       class: 'bar-seg', style: { width: `${max > 0 ? Math.max(0.4, (sg.value / max) * 100) : 0}%`,
         background: `var(${(CATEGORIES[sg.category] || CATEGORIES.yacht).colorVar})` } })));
-    const value = fmt.mass(r.value);
+    const value = fmt.quantity(r.value, kindOf(m));
     ol.append(h('li', { class: `rank-row${selected ? ' is-selected' : ''}` },
       h('button', { type: 'button', class: 'rank-btn', 'data-mmsi': r.mmsi, 'aria-current': selected ? 'true' : null,
         'aria-label': `Rank ${r.rank}: ${r.owner}, ${r.name}. ${m.label} ${value.text}, coverage ${fmt.pct(r.coverage)}. Open details.`,
@@ -508,7 +519,7 @@ function rankingList(rows, max) {
           [r.flag_code, Number.isFinite(r.length_m) ? `${r.length_m} m` : null].filter(Boolean).map(x => h('span', { class: 'meta-item' }, x)))),
       h('span', { class: 'rank-bar', 'aria-hidden': 'true' }, bar),
       h('span', { class: 'rank-value', 'aria-hidden': 'true' },
-        h('span', { class: 'val' }, fmt.massIn(r.value, unit), h('span', { class: 'val-unit' }, ` ${unit}`))),
+        h('span', { class: 'val' }, fmt.valueIn(r.value, unit), h('span', { class: 'val-unit' }, ` ${unit.label}`))),
       h('span', { class: 'cov', 'aria-hidden': 'true' }, meter(r.coverage),
         h('span', { class: 'cov-text' }, fmt.pct(r.coverage), h('span', { class: 'cov-word' }, ' coverage'))))));
   }
@@ -522,7 +533,7 @@ function rankingTable(rows) {
     { k: 'name', label: 'Yacht', v: r => r.name },
     { k: 'flag', label: 'Flag', v: r => r.flag_code || '–' },
     { k: 'len', label: 'Length (m)', num: true, v: r => (Number.isFinite(r.length_m) ? r.length_m : '–') },
-    ...METRICS.filter(m => m.enabled).map(m => { const u = fmt.unitFor(Math.max(...rows.map(r => Math.abs(valueOf(m, r) || 0)))); return { k: m.key, label: `${m.label} (${u})`, num: true, v: r => fmt.massIn(valueOf(m, r), u) }; }),
+    ...METRICS.filter(m => m.enabled).map(m => { const u = fmt.unitOf(Math.max(...rows.map(r => Math.abs(valueOf(m, r) || 0))), kindOf(m)); return { k: m.key, label: `${m.label} (${u.label})`, num: true, v: r => fmt.valueIn(valueOf(m, r), u) }; }),
     { k: 'cov', label: 'Coverage', num: true, v: r => fmt.pct(r.coverage) },
     { k: 'last', label: 'Last report', v: r => fmt.dateTime(r.last_seen) },
   ];
@@ -565,7 +576,7 @@ async function renderMapView(root, rows) {
   h('p', { class: 'map-legend' }, h('span', { class: 'legend-dot big' }), h('span', { class: 'legend-dot' }),
     `Circle area grows with the estimated ${m.phrase} in the period. Select a circle for details.`));
   if (state.error && !state.fleet) return root.append(errorBox(state.error));
-  const res = await renderFleetMap(mapEl, { yachts: rows, valueOf: (y) => (y.hasData ? y.value : NaN), metricLabel: m.label,
+  const res = await renderFleetMap(mapEl, { yachts: rows, valueOf: (y) => (y.hasData ? y.value : NaN), metricLabel: m.label, formatValue: (v) => fmt.quantity(v, kindOf(m)).text,
     onSelect: (mmsi) => openDetail(mmsi), selected: state.selected });
   if (res) {
     const missing = rows.length - res.shown;
@@ -685,7 +696,7 @@ function updateDetailFigures(panel, r) {
     return;
   }
   const m = metricDef();
-  for (const mm of METRICS.filter(x => x.enabled)) box.append(fig(mm.label, fmt.mass(valueOf(mm, r)).text, mm.climate ? `${state.climate.horizon}-year horizon` : null, mm.key === m.key));
+  for (const mm of METRICS.filter(x => x.enabled)) box.append(fig(mm.label, fmt.quantity(valueOf(mm, r), kindOf(mm)).text, horizonNote(mm), mm.key === m.key));
   box.append(...[
     fig('Coverage', fmt.pct(r.coverage), `${fmt.hours(r.coverage_h)} of ${fmt.hours(r.period_h)}${r.coverage_bridged_h > 0 ? `, incl. ${fmt.hours(r.coverage_bridged_h)} lying time bridged` : ''}`),
     (r.coverage_yard_h > 0 || r.coverage_layup_h > 0)
@@ -708,7 +719,7 @@ function renderClimateSection(sec, r) {
   const c = state.climate;
   const p = climate.co2eParts(r, c);
   const total = p.co2 + p.n2o + p.so2 + p.nox;
-  const row = (label, v, cls) => h('tr', { class: cls || null }, h('th', { scope: 'row' }, label), h('td', { class: 'num' }, fmt.mass(v).text));
+  const row = (label, v, cls) => h('tr', { class: cls || null }, h('th', { scope: 'row' }, label), h('td', { class: 'num' }, fmt.quantity(v, 'co2e').text));
   const chartEl = h('div', { class: 'chart-host' });
   sec.append(
     h('h3', {}, `Climate impact (${c.horizon}-year horizon)`),
@@ -779,6 +790,7 @@ function renderStatus() {
         h('li', {}, 'Owner names are only shown when a cited source backs the ownership, and only where the site owner has made names visible.'),
         h('li', {}, 'Global warming potential (CO₂e): the greenhouse gases CO₂ and N₂O weighted by their global warming potential over the selected horizon (default 100 years, IPCC AR6). Methane is not included.'),
         h('li', {}, 'Climate impact (CO₂e): CO₂, N₂O, sulphate (SO₂) and NOₓ weighted by their global warming potential over a selectable horizon (default 100 years), following IPCC AR6. Short-lived substances are shown separately because their cooling is temporary. Black carbon is not included, as particle filter fitments are unknown. NOₓ values are radiative forcing, sulphate values effective radiative forcing.'),
+        h('li', {}, 'Radiative forcing (W m⁻²): the change in the Earth’s energy balance caused by the emissions in the period, from a linear impulse-response model (IPCC AR6 Ch. 7.6; Fuglestvedt et al. 2010). Shown at the end of the period (W m⁻²) and integrated over the horizon (W m⁻²·a). The integrated value divided by that of 1 kg CO₂ gives the CO₂e figure.'),
         h('li', {}, 'Calendar periods and dates use UTC.'))));
 }
 

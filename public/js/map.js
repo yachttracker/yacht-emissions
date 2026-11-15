@@ -37,7 +37,7 @@ function baseMap(L, el) {
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#2a78d6';
 
 // Übersicht: ein Kreis je Yacht an der letzten Position; Fläche ∝ Metrik im Zeitraum
-export async function renderFleetMap(el, { yachts, valueOf, metricLabel, onSelect, selected }) {
+export async function renderFleetMap(el, { yachts, valueOf, metricLabel, formatValue = (v) => fmt.mass(v).text, onSelect, selected }) {
   let L;
   try { L = await loadLeaflet(); } catch (e) { clear(el).append(h('p', { class: 'map-error' }, e.message)); return null; }
   if (el._map) { el._map.remove(); el._map = null; }
@@ -61,7 +61,7 @@ export async function renderFleetMap(el, { yachts, valueOf, metricLabel, onSelec
     const tipEl = h('div', { class: 'map-tip' },
       h('strong', {}, y.owner || 'Owner unknown'),
       h('span', {}, y.flag_code ? `${y.name}, ${y.flag_code}` : y.name),
-      h('span', {}, Number.isFinite(v) ? `${metricLabel}: ${fmt.mass(v).text}` : `${metricLabel}: no data in period`),
+      h('span', {}, Number.isFinite(v) ? `${metricLabel}: ${formatValue(v)}` : `${metricLabel}: no data in period`),
       h('span', { class: 'muted' }, `Last position ${fmt.ago(y.last_seen)}`));
     m.bindTooltip(tipEl, { direction: 'top', offset: [0, -r] });
     m.on('click', () => onSelect && onSelect(y.mmsi));

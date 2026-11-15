@@ -32,7 +32,30 @@ export function unitFor(maxKg) {
   return a >= 1000 ? 't' : 'kg';
 }
 
-export const int = (n) => (Number.isFinite(Number(n)) ? N0.format(Number(n)) : '–');
+// ── Größen mit Einheit je Metrik-Art (kind) ──────────────────────────────────
+// mass = kg/t, co2e = kg/t CO₂e, erf = W m⁻² (Strahlungsantrieb), erfInt = W m⁻²·a (über den Horizont integriert).
+// Strahlungsantrieb mit SI-Vorsatz (mW … pW), da eine Yacht im Bereich nW m⁻² liegt.
+const W_PREFIX = [['mW', 1e-3], ['µW', 1e-6], ['nW', 1e-9], ['pW', 1e-12]];
+export function unitOf(max, kind = 'mass') {
+  const a = Math.abs(Number(max) || 0);
+  if (kind === 'erf' || kind === 'erfInt') {
+    const [p, div] = a === 0 ? W_PREFIX[2] : (W_PREFIX.find(([, f]) => a >= f) || W_PREFIX[W_PREFIX.length - 1]);
+    return { label: `${p} m⁻²${kind === 'erfInt' ? '·a' : ''}`, div };
+  }
+  const t = a >= 1000;
+  return { label: `${t ? 't' : 'kg'}${kind === 'co2e' ? ' CO₂e' : ''}`, div: t ? 1000 : 1 };
+}
+const numIn = (v, div) => { const x = v / div; return (Math.abs(x) >= 100 ? N0 : Math.abs(x) >= 10 ? N1 : N2).format(x); };
+// Wert in fester Einheit (Achse/Spalte), u aus unitOf()
+export const valueIn = (v, u) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? '–' : numIn(Number(v), u.div));
+// Einzelwert mit passender Einheit → { num, unit, text }
+export function quantity(v, kind = 'mass') {
+  if (v === null || v === undefined || !Number.isFinite(Number(v))) return { num: '–', unit: '', text: '–' };
+  const u = unitOf(v, kind), num = numIn(Number(v), u.div);
+  return { num, unit: u.label, text: `${num} ${u.label}` };
+}
+
+export const int =(n) => (Number.isFinite(Number(n)) ? N0.format(Number(n)) : '–');
 export const dec1 = (n) => (Number.isFinite(Number(n)) ? N1.format(Number(n)) : '–');
 export const pct = (x) => (Number.isFinite(x) ? `${N0.format(Math.round(x * 100))} %` : '–');
 
