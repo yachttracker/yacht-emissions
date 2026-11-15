@@ -121,7 +121,7 @@ test('Stichprobe: HISTORY_MAX_DAYS begrenzt den Historienlauf', async () => {
 
 test('Rückwärtsabruf: nur in den letzten Periodentagen, ältere Tage, älteste zuerst (Standard)', async () => {
   await clean();
-  const base = { backfillDays: 365, backfillTailDays: 2, periodStartDay: 1 };
+  const base = { backfillDays: 365, backfillTailDays: 2, periodStartDay: 1, lookbackDays: 3 };   // Regel-Lookback fest 3 (Standard seit 15.11.2026: 7)
   // Mitte der Periode: kein Rückwärtsabruf
   const mid = await planner.planHistory(pool, mst, cfgFor(base), { now: new Date('2026-11-15T03:30:00Z') });
   assert.equal(mid.backfill.days, 0);
