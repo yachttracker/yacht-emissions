@@ -5,6 +5,9 @@
 //            1 Credit je gefundenem Schiff (max. 100 je Anfrage); nicht gefundene kostenlos.
 //            Passt ein Kennzeichen auf mehrere Schiffe, kommen alle zurück und kosten je 1 Credit.
 //   History: GET /api/v0/vessel_history?imo=..&from=YYYY-MM-DD&to=YYYY-MM-DD  (max. 30 Tage ab from)
+//            `to` ist EXKLUSIV: geliefert wird [from 00:00, to 00:00) UTC. Belegt: Test 15.11.2026, Koru
+//            (IMO 9857298): from=to=14.11. → 0 Punkte, 0 Credits; from=13.11.&to=14.11. → 48 Punkte, alle
+//            vom 13.11., 2 Credits. Bis dahin fehlte der letzte Tag jedes Aufrufs (Eintagesabfrage = leer).
 //            2 Credits je zurückgeliefertem Kalenderdatum; Daten ohne Positionen kostenlos.
 //            "days=1 kostet typischerweise 4 Credits" (spannt 2 UTC-Daten) → hier nie `days`, nur from/to.
 //            Daten seit 10.08.2021. Gespeichert werden nur Positionsänderungen (Liegezeiten → Lücken).
@@ -14,8 +17,7 @@
 //   Fehler:  401 Schlüssel, 402 Credits leer/Abo abgelaufen, 404 nicht gefunden (kostenlos),
 //            429 > 600 Aufrufe/min mit Retry-After (Sekunden).
 //   Pro/extended (vessel_pro, 3 Credits) gibt es nur einzeln, nicht im Bulk → nicht genutzt.
-// Ungeklärt (im Trial prüfen, Rohantwort wird je Endpunkt einmal geloggt):
-//   - ob `to` inklusive ist (Standard hier: inklusive, DL_HISTORY_TO_EXCLUSIVE=true schaltet um)
+// Ungeklärt (Rohantwort wird je Endpunkt einmal geloggt):
 //   - ob die Abfrage über die IMO bei MMSI-Wechseln die ganze Historie liefert (Standard: IMO)
 //   - wie dicht die Historie vor Anker ist; ob es eine Obergrenze an Punkten je Antwort gibt
 //   - Wortlaut der navigation_status-Texte (Zuordnung unten über Schlüsselwörter)
@@ -29,7 +31,9 @@ const BASE = process.env.DL_BASE_URL || 'https://api.datalastic.com/api/v0';
 const COSTS = { live_simple: 1, live_extended: 1, history_day: 2 };
 // Anbieterspezifische Grenzen der Historie für lib/planner.js und lib/schedule.js
 const HISTORY = {
-  maxDaysPerCall: 30,          // belegt: "max 30 days from from"
+  // belegt: "max 30 days from from". Mit exklusivem `to` ist to − from = Anzahl Tage; 29 als Sicherheitsrand
+  // (Annahme: unklar, ob genau 30 noch angenommen wird). Kostet nichts extra (Abrechnung je Datum).
+  maxDaysPerCall: 29,
   earliest: '2021-08-10',      // belegt: "Data is available since August 10, 2021"
   recordLimit: null,           // nicht dokumentiert → keine Warnung "Datensatzlimit"
   changesOnly: true,           // belegt: nur Positionsänderungen gespeichert
@@ -256,7 +260,9 @@ async function fetchHistory(mmsi, fromIso, toIso) {
   const lastDay = String(toIso).slice(0, 10);
   const span = Math.round((Date.parse(lastDay) - Date.parse(fromDay)) / 86400000) + 1;
   if (span > HISTORY.maxDaysPerCall) throw new Error(`Datalastic: ${span} Tage > ${HISTORY.maxDaysPerCall} je Abfrage`);
-  const toParam = process.env.DL_HISTORY_TO_EXCLUSIVE === 'true' ? addDay(lastDay, 1) : lastDay;
+  // `to` exklusiv (belegt 15.11.2026) → Folgetag übergeben, damit lastDay ganz enthalten ist.
+  // DL_HISTORY_TO_EXCLUSIVE=false nur als Notschalter, falls Datalastic das Verhalten ändert.
+  const toParam = process.env.DL_HISTORY_TO_EXCLUSIVE === 'false' ? lastDay : addDay(lastDay, 1);
   const [q] = queriesFor([mmsi]);
   const r = await call('/vessel_history', [[q.type, q.id], ['from', fromDay], ['to', toParam]]);
   const raw = Array.isArray(r.body?.data?.positions) ? r.body.data.positions : [];

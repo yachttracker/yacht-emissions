@@ -84,7 +84,7 @@ if (DB) {
     assert.equal(r.resumed[0].backfill_from, '2026-10-30');
     assert.equal((await tracking.paused(pool, DS)).size, 0, 'nicht mehr pausiert');
 
-    const cands = await planner.buildHistoryCandidates(pool, cfg, { now });
+    const cands = await planner.buildHistoryCandidates(pool, cfg, { now, lookbackDays: 3 });   // Regel-Lookback fest 3 (Standard seit 15.11.2026: 7)
     const d = cands.filter(c => c.mmsi === DILBAR.mmsi).map(c => `${c.day}:${c.prio}:${c.why}`).sort();
     assert.ok(d.includes('2026-10-30:1:Wiederaufnahme nach Pause'), 'Tag der Meldung wird nachgekauft');
     assert.ok(d.includes('2026-11-02:1:Wiederaufnahme nach Pause'));

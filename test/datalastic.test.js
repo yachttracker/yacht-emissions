@@ -106,7 +106,7 @@ test('Historie: from/to als Datum, kein days, aufsteigend sortiert, nur angefrag
   assert.equal(url.pathname, '/api/v0/vessel_history');
   assert.equal(url.searchParams.get('imo'), String(y.imo));
   assert.equal(url.searchParams.get('from'), '2026-11-06');
-  assert.equal(url.searchParams.get('to'), '2026-11-06');
+  assert.equal(url.searchParams.get('to'), '2026-11-07', '`to` exklusiv (belegt 15.11.2026) → Folgetag');
   assert.equal(url.searchParams.get('days'), null);
   assert.equal(r.charged, 4);
   assert.deepEqual(r.positions.map(p => p.ts), ['2026-11-06T08:00:00.000Z', '2026-11-06T23:00:00.000Z']);
@@ -115,19 +115,25 @@ test('Historie: from/to als Datum, kein days, aufsteigend sortiert, nur angefrag
   assert.equal(r.calls[0].outside_range, 1);
   assert.equal(r.calls[0].dates_returned, 2);
 
-  process.env.DL_HISTORY_TO_EXCLUSIVE = 'true';
+  // Notschalter: DL_HISTORY_TO_EXCLUSIVE=false übergibt den letzten Tag selbst
+  process.env.DL_HISTORY_TO_EXCLUSIVE = 'false';
   await dl.fetchHistory(y.mmsi, '2026-11-06T00:00:00Z', '2026-11-06T23:59:59Z');
-  assert.equal(url.searchParams.get('to'), '2026-11-07');
+  assert.equal(url.searchParams.get('to'), '2026-11-06');
   delete process.env.DL_HISTORY_TO_EXCLUSIVE;
+  // mehrere Tage: from = erster Tag, to = Tag nach dem letzten
+  await dl.fetchHistory(y.mmsi, '2026-11-01T00:00:00Z', '2026-11-03T23:59:59Z');
+  assert.equal(url.searchParams.get('from'), '2026-11-01');
+  assert.equal(url.searchParams.get('to'), '2026-11-04');
 
   // ohne Header: 2 Credits je zurückgeliefertem Datum mit Daten (belegt: Doku)
   global.fetch = async () => respond(200, { data: { positions: [
     { lat: 1, lon: 1, speed: 0, last_position_UTC: '2026-10-01T05:00:00Z' },
     { lat: 1, lon: 1, speed: 0, last_position_UTC: '2026-10-03T05:00:00Z' }] }, meta: { success: true } });
-  const est = await dl.fetchHistory(y.mmsi, '2026-10-01T00:00:00Z', '2026-10-30T23:59:59Z');
+  const est = await dl.fetchHistory(y.mmsi, '2026-10-01T00:00:00Z', '2026-10-29T23:59:59Z');
   assert.equal(est.charged, 4);
   assert.equal(est.calls[0].estimated, true);
-  await assert.rejects(dl.fetchHistory(y.mmsi, '2026-10-01T00:00:00Z', '2026-11-01T23:59:59Z'), /30/);
+  // höchstens 29 Tage je Abfrage (to − from ≤ 30 mit exklusivem `to`)
+  await assert.rejects(dl.fetchHistory(y.mmsi, '2026-10-01T00:00:00Z', '2026-10-30T23:59:59Z'), /29/);
 });
 
 test('Abfrage über MMSI wählbar (DL_ID_TYPE=mmsi)', async () => {
@@ -151,10 +157,10 @@ test('Identitätsabgleich über IMO liefert alle Datensätze', async () => {
   assert.equal(r.records[0].received, '2026-11-01T00:00:00.000Z');
 });
 
-test('Planung mit Datalastic Starter: 30 Tage je Abfrage, Variante B im Budget', () => {
+test('Planung mit Datalastic Starter: 29 Tage je Abfrage (to exklusiv), Variante B im Budget', () => {
   const cfg = loadConfig({ AIS_PROVIDER: 'datalastic', CREDIT_MONTH_BUDGET: '20000', CREDIT_DAILY_CAP: '800',
     POLL_HOURS_UTC: '9,21' });
-  assert.equal(daysPerHistoryCall(cfg, dl), 30);
+  assert.equal(daysPerHistoryCall(cfg, dl), 29);
   const s = computeSchedule(cfg, YACHTS.length, dl.COSTS);
   assert.equal(s.polls_per_day, 2);
   assert.equal(s.breakdown.extended_extra, 0, 'kein Aufpreis für extended');
