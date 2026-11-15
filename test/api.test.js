@@ -273,14 +273,23 @@ test('Öffentliche Ansicht: keine AIS-Rohdaten ohne Zugang (Datalastic §8)', as
   assert.ok(pub.json.points.length > 0 && pub.json.points.length <= 25, `Stundenmittel: ${pub.json.points.length} Punkte`);
   assert.ok(pub.json.meta.bucket_s >= 3600);
   for (const pt of pub.json.points) {
-    for (const k of ['latitude', 'longitude', 'speed_knots']) assert.ok(!(k in pt), `${k} öffentlich`);
+    for (const k of ['latitude', 'longitude', 'speed_knots', 'source', 'n', 'bucket_start']) assert.ok(!(k in pt), `${k} öffentlich`);
     assert.ok(Number.isFinite(pt.co2_kg_h));
+    assert.match(pt.timestamp, /T\d{2}:00:00\.000Z$/, 'Zeitstempel = Beginn der Stunde, kein Meldezeitpunkt');
   }
+  for (const k of ['data_from', 'data_to']) {
+    if (pub.json.meta[k]) assert.match(pub.json.meta[k], /:00:00\.000Z$/, `${k} auf die Stunde gerundet`);
+  }
+  const ps = (await get('/api/emissions/summary?period=week')).json;
+  assert.ok(ps.every(r => !r.last_seen || /:00:00\.000Z$/.test(new Date(r.last_seen).toISOString())), 'last_seen gerundet');
+  const pf = (await get('/api/fleet')).json;
+  assert.ok(pf.yachts.every(y => !y.last_seen || /:00:00\.000Z$/.test(y.last_seen)), 'Flotte: last_seen gerundet');
   const legacy = await get(`/api/yacht/${A}/history?period=day`);
   assert.ok(legacy.json.every(pt => !('latitude' in pt)), 'auch ohne meta keine Positionen');
   const full = await get(`/api/yacht/${A}/history?period=day`, T());
   assert.equal(full.json.length, 47);
   assert.ok('latitude' in full.json[0]);
+  assert.ok(!('bucket_start' in full.json[0]), 'internes Feld nicht ausgegeben');
 
   const f = (await get('/api/fleet')).json;
   assert.ok(f.yachts.every(y => y.last_position === null), 'keine letzte Position');
