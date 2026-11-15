@@ -9,19 +9,23 @@ export const CATEGORIES = {
   yacht: { label: 'Yachts', colorVar: '--cat-yacht' },
 };
 
-// Metriken des Rankings. field = Summenfeld aus /api/emissions/summary (kg).
+// Metriken. field = Summenfeld aus /api/emissions/summary (kg).
+// select:true = im Auswahlfeld „Metric“ (Ranking); alle enabled-Metriken erscheinen in Tabellenansicht und Detailpanel.
+// Entscheidung Paul 15.11.2026: Auswahl nur „Global warming potential“ (Standard) und „Climate impact“.
 export const METRICS = [
+  // Klimawirkung (Entscheidung Paul 12.11.2026, claude/recherche/erf_methodik_v2.md): berechnet im Browser
+  // aus den Summen (public/js/climate.js), Zeithorizont und Faktoren per Schieberegler.
+  // 'ghg' = nur Treibhausgase CO2 + N2O (A); 'all' = Strahlenbilanz-Zahl mit SO2 und NOx (B).
+  { key: 'ghg', label: 'Global warming potential (CO₂e)', long: 'Global warming potential: CO₂ + N₂O (CO₂e)', phrase: 'global warming potential (CO₂e)',
+    climate: 'ghg', enabled: true, select: true,
+    hint: 'Greenhouse gases CO₂ and N₂O, weighted by their global warming potential (GWP).' },
+  { key: 'climate', label: 'Climate impact (CO₂e)', long: 'Climate impact incl. SO₂ and NOₓ (CO₂e)', phrase: 'climate impact (CO₂e)',
+    climate: 'all', enabled: true, select: true,
+    hint: 'CO₂ and N₂O plus the short-lived effects of sulphate (SO₂) and NOₓ: radiative forcing integrated over the horizon, expressed as CO₂e.' },
   { key: 'co2', label: 'CO₂', long: 'Carbon dioxide (CO₂)', phrase: 'CO₂', field: 'co2_kg_total', enabled: true },
   { key: 'fuel', label: 'Fuel', long: 'Fuel burned', phrase: 'fuel burned', field: 'fuel_kg_total', enabled: true },
   { key: 'nox', label: 'NOₓ', long: 'Nitrogen oxides (NOₓ)', phrase: 'NOₓ', field: 'nox_kg_total', enabled: true },
   { key: 'sox', label: 'SOₓ', long: 'Sulphur oxides (SOₓ)', phrase: 'SOₓ', field: 'sox_kg_total', enabled: true },
-  // Klimawirkung (Entscheidung Paul 12.11.2026, claude/recherche/erf_methodik_v2.md): berechnet im Browser
-  // aus den Summen (public/js/climate.js), Zeithorizont und Faktoren per Schieberegler.
-  // 'all' = Strahlenbilanz-Zahl mit SO2 und NOx (B); 'ghg' = nur Treibhausgase CO2 + N2O (A).
-  { key: 'climate', label: 'Climate impact (CO₂e)', long: 'Climate impact, all substances (CO₂e)', phrase: 'climate impact (CO₂e)',
-    climate: 'all', enabled: true },
-  { key: 'ghg', label: 'Greenhouse gases (CO₂e)', long: 'Greenhouse gases CO₂ + N₂O (CO₂e)', phrase: 'greenhouse-gas emissions (CO₂e)',
-    climate: 'ghg', enabled: true },
 ];
 
 // Zeiträume (Backend: lib/periods.js). Kalendergrenzen in UTC.
@@ -78,4 +82,4 @@ export const DATASET_BANNER = {
 export const FEATURES = { map: false };
 
 export const REFRESH_MS = 5 * 60 * 1000;    // Daten kommen nur wenige Male am Tag hinzu
-export const DEFAULTS = { view: 'ranking', period: 'month', mode: 'rolling', metric: 'co2' };
+export const DEFAULTS = { view: 'ranking', period: 'month', mode: 'rolling', metric: 'ghg' };

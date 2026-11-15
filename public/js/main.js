@@ -21,7 +21,8 @@ const state = {
   error: null, loading: false, loadedAt: null,
 };
 const $ = (id) => document.getElementById(id);
-const metricDef = () => METRICS.find(m => m.key === state.metric && m.enabled) || METRICS[0];
+const SELECTABLE = METRICS.filter(m => m.enabled && m.select);
+const metricDef = () => SELECTABLE.find(m => m.key === state.metric) || SELECTABLE[0];
 // Wert einer Metrik für eine Summary-Zeile: Summenfeld (kg) oder berechnete Klimawirkung (kg CO2e)
 const valueOf = (m, row) => (!row ? null : m.climate ? climate.co2e(row, m.climate, state.climate) : m.field ? row[m.field] : null);
 const win = () => (state.period === 'custom'
@@ -38,7 +39,7 @@ function readHash() {
   if (/^\d{4}-\d{2}-\d{2}$/.test(p.get('from') || '') && /^\d{4}-\d{2}-\d{2}$/.test(p.get('to') || '')) {
     state.period = 'custom'; state.from = p.get('from'); state.to = p.get('to');
   }
-  if (METRICS.some(m => m.key === p.get('metric') && m.enabled)) state.metric = p.get('metric');
+  if (SELECTABLE.some(m => m.key === p.get('metric'))) state.metric = p.get('metric');
   if (/^\d{9}$/.test(p.get('yacht') || '')) state.selected = p.get('yacht');
   const [hl, hh] = climate.HORIZON_RANGE, [sl, sh] = climate.SO2_RANGE;
   const hz = Number(p.get('h')); if (Number.isFinite(hz) && hz >= hl && hz <= hh) state.climate.horizon = hz;
@@ -280,7 +281,7 @@ function buildControls(root) {
 
   const metric = h('select', { id: 'f-metric', class: 'select', 'aria-label': 'Metric',
     onchange: (e) => { state.metric = e.target.value; renderAll(); refreshDetail({ refetch: false }); } },
-  METRICS.map(m => h('option', { value: m.key, disabled: !m.enabled }, m.enabled ? m.label : `${m.label} – ${m.note.toLowerCase()}`)));
+  SELECTABLE.map(m => h('option', { value: m.key, title: m.hint || null }, m.label)));
 
   const extra = [];
   for (const f of FILTERS.filter(x => x.enabled)) {
@@ -342,6 +343,7 @@ function climateControls() {
       h('select', { id: 'cc-nox', class: 'select', onchange: (e) => set({ nox: e.target.value }) },
         Object.entries(climate.NOX_SETS).map(([k, v]) => h('option', { value: k }, v.label)))),
     h('button', { type: 'button', class: 'btn btn-quiet cc-reset', onclick: () => set({ ...climate.DEFAULTS }) }, 'Reset'),
+    h('p', { class: 'fine cc-hint', id: 'cc-hint' }),
     h('p', { class: 'fine cc-note' }, 'CO₂e: each substance weighted by its global warming potential over the chosen horizon (IPCC AR6 method). ',
       'Sulphate and the NOₓ methane effect cool temporarily and harm air quality; they do not offset CO₂. ',
       'Defaults: 100 years, sulphate −8.4 mW m⁻² per Tg SO₂/yr (Skeie et al. 2024), NOₓ Holmes et al. 2014. Black carbon is not included.'));
@@ -352,6 +354,7 @@ function syncClimateControls(root) {
   box.hidden = !m.climate;
   if (!m.climate) return;
   const c = state.climate;
+  root.querySelector('#cc-hint').textContent = m.hint || '';
   root.querySelector('#cc-h').value = String(c.horizon);
   root.querySelector('#cc-h-out').textContent = `${c.horizon} years`;
   root.querySelector('#cc-so2').value = String(c.so2);
@@ -713,7 +716,7 @@ function renderClimateSection(sec, r) {
       h('caption', { class: 'sr-only' }, 'CO₂ equivalents by substance'),
       h('tbody', {},
         row('CO₂', p.co2), row('N₂O', p.n2o),
-        row('Greenhouse gases', p.co2 + p.n2o, 'cc-sum'),
+        row('Global warming potential (CO₂ + N₂O)', p.co2 + p.n2o, 'cc-sum'),
         row('SO₂ (sulphate, cooling)', p.so2), row('NOₓ (ozone − methane)', p.nox),
         row('Climate impact, all substances', total, 'cc-sum'))),
     h('h3', {}, 'After-effect of these emissions'),
@@ -774,6 +777,7 @@ function renderStatus() {
           : null,
         h('li', {}, 'Coverage is the share of the selected period with reports. Totals are not extrapolated to time without reports.'),
         h('li', {}, 'Owner names are only shown when a cited source backs the ownership, and only where the site owner has made names visible.'),
+        h('li', {}, 'Global warming potential (CO₂e): the greenhouse gases CO₂ and N₂O weighted by their global warming potential over the selected horizon (default 100 years, IPCC AR6). Methane is not included.'),
         h('li', {}, 'Climate impact (CO₂e): CO₂, N₂O, sulphate (SO₂) and NOₓ weighted by their global warming potential over a selectable horizon (default 100 years), following IPCC AR6. Short-lived substances are shown separately because their cooling is temporary. Black carbon is not included, as particle filter fitments are unknown. NOₓ values are radiative forcing, sulphate values effective radiative forcing.'),
         h('li', {}, 'Calendar periods and dates use UTC.'))));
 }
