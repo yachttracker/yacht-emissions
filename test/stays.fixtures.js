@@ -109,6 +109,29 @@ const SCENARIOS = [
     mmsi: '990000012', points: every('2026-12-01T00:00:00Z', '2026-12-20T00:00:00Z', 12, YARD),
     win: { t0: '2026-12-10T00:00:00Z', t1: '2026-12-11T00:00:00Z' },
     expect: { co2_kg_total: 0, coverage_h: 24, coverage_yard_h: 24 } },
+
+  // P-05: Anker im Live-Betrieb zwischen zwei Historienpunkten. Leere Historie ohne Live-Treffer = stumm.
+  { id: 'S13', title: 'Anker live, Historie → 3 Tage stumm → Historie: nur 24 h überbrückt (P-05)',
+    mmsi: '990000013',
+    points: [pt('2026-12-01T10:00:00Z', ANCHOR, 0, 30, 'history'),
+             pt('2026-12-05T10:00:00Z', ANCHOR, 8, 500, 'history'),
+             pt('2026-12-05T10:30:00Z', SEA, 12, 500, 'history')],
+    days: [['2026-12-01', 'done'], ['2026-12-02', 'empty'], ['2026-12-03', 'empty'], ['2026-12-04', 'empty'],
+           ['2026-12-05', 'done']],
+    win: { t0: '2026-12-01T00:00:00Z', t1: '2026-12-06T00:00:00Z' },
+    // 24 h × 30 + 0,5 h × 500 + 1 h × 500 (wie S9)
+    expect: { co2_kg_total: 1470, coverage_h: 25.5 } },
+
+  { id: 'S14', title: 'Anker live, Historie → 3 Tage mit Live-Treffern, ohne Positionsänderung → Historie: ganz überbrückt',
+    mmsi: '990000014',
+    points: [pt('2026-12-01T10:00:00Z', ANCHOR, 0, 30, 'history'),
+             pt('2026-12-05T10:00:00Z', ANCHOR, 8, 500, 'history'),
+             pt('2026-12-05T10:30:00Z', SEA, 12, 500, 'history')],
+    days: [['2026-12-01', 'done'], ['2026-12-02', 'empty', 2], ['2026-12-03', 'empty', 1], ['2026-12-04', 'empty', 2],
+           ['2026-12-05', 'done']],
+    win: { t0: '2026-12-01T00:00:00Z', t1: '2026-12-06T00:00:00Z' },
+    // 96 h × 30 + 0,5 h × 500 + 1 h × 500 (wie S8)
+    expect: { co2_kg_total: 3630, coverage_h: 97.5 } },
 ];
 
 module.exports = { SCENARIOS, ZONES, PARAMS, NOW, day };
