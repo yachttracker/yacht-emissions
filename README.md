@@ -32,7 +32,7 @@ Adapter in `providers/`; die Abruflogik (`lib/planner.js`) ist anbieterneutral.
 Kosten laut [API-Doku](https://docs.datalastic.com/) (abgerufen 2026-11-07): Bulk 1 Credit je gefundener
 Yacht (≤ 100 je Abfrage), Historie 2 Credits je Kalenderdatum mit Daten (leere Daten kostenlos, ≤ 30 Tage
 je Abfrage, Daten seit 10.08.2021). Die Historie enthält nur Positionsänderungen; Liegezeiten überbrückt
-die Liegezeit-Regel der Zeitintegration (`STATIONARY_*`, siehe unten).
+die Liegezeit-Regel der Zeitintegration (`STATIONARY_*`, `STAY_*`, siehe unten).
 
 Regel (Variante B, 2026-11-07): Historie für jede Yacht und jeden Tag, Live-Bulk nur 2×/Tag als
 Lebenszeichen, Rest in den Rückwärtsabruf. Abfragen über die IMO (`DL_ID_TYPE=imo`).
@@ -55,11 +55,25 @@ Optional: `DL_ID_TYPE` (`imo` | `mmsi`), `DL_HISTORY_TO_EXCLUSIVE` (`true`, fall
 im Trial am Header `X-Request-Cost` prüfen), `DL_LOG_RAW` (`false` schaltet das einmalige Rohantwort-Log ab),
 `DL_TIMEOUT_MS`.
 
-### Liegezeit-Regel (Zeitintegration)
-Liegt eine Yacht vor und nach einer Lücke langsamer als `STATIONARY_V_KN` (2 kn) und am selben Ort
-(≤ `STATIONARY_DIST_SM`, 0,3 sm), gilt die Lücke als Liegezeit, höchstens `STATIONARY_MAX_GAP_HOURS`
-(24 h, Annahme). `0` schaltet die Regel ab. Die Summary weist den überbrückten Anteil als
-`coverage_bridged_h` aus.
+### Liegezeit und Liegezustände (Zeitintegration, `lib/integrate.js`)
+Liegt eine Yacht langsamer als `STATIONARY_V_KN` (2 kn) und liegt die nächste Meldung am selben Ort
+(≤ `STATIONARY_DIST_SM`, 0,3 sm), gilt die Lücke als Liegezeit. Ganz überbrückt wird sie nur, wenn jeder
+volle Tag dazwischen beobachtet ist (Historie gekauft: `empty`/`done`, oder Live-Betrieb ab `LIVE_SINCE`);
+sonst und vor Anker im Live-Betrieb höchstens `STATIONARY_MAX_GAP_HOURS` (24 h, Regel A32).
+
+Zustand eines Halts (Regel Paul 2026-11-15, Annahmen):
+
+| Zustand | Bedingung | Emissionen |
+|---|---|---|
+| Lay-up (belegt) | Pause in `data/tracking_state.csv` wegen `refit`/`seized`/`laid_up` (mit Quelle) | 0 |
+| Werft | Halt in einer Zone aus `data/yards.csv`, Episode ≥ `STAY_YARD_MIN_HOURS` (72 h), AIS egal | 0 |
+| Lay-up (unbestätigt) | Halt in einem Hafen aus `data/ports.csv`, AIS seit ≥ `STAY_SILENT_MIN_DAYS` (30 d) stumm, nur ab `LIVE_SINCE` | 0 ab letzter Meldung |
+| Hafen | Halt in einem Hafen, sonst | Hotellast (Generatoren) |
+| Anker | Halt außerhalb aller Zonen | Hotellast (Generatoren) |
+
+Die Summary weist `coverage_bridged_h`, `coverage_yard_h`, `coverage_layup_h` und
+`coverage_layup_unconfirmed_h` aus. `STAY_MAX_BRIDGE_DAYS` (Standard 0 = unbegrenzt) begrenzt jede
+Überbrückung für die Sensitivitätsanalyse. Leere Zonen-Dateien = jeder Halt ist Anker.
 
 ## Sichtbarkeit (öffentlich / privat)
 Schalter per Railway-Variable, ohne Codeänderung (`lib/access.js`):

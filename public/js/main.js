@@ -683,9 +683,15 @@ function updateDetailFigures(panel, r) {
   }
   const m = metricDef();
   for (const mm of METRICS.filter(x => x.enabled)) box.append(fig(mm.label, fmt.mass(valueOf(mm, r)).text, mm.climate ? `${state.climate.horizon}-year horizon` : null, mm.key === m.key));
-  box.append(
+  box.append(...[
     fig('Coverage', fmt.pct(r.coverage), `${fmt.hours(r.coverage_h)} of ${fmt.hours(r.period_h)}${r.coverage_bridged_h > 0 ? `, incl. ${fmt.hours(r.coverage_bridged_h)} lying time bridged` : ''}`),
-    fig('Last report', fmt.ago(r.last_seen), fmt.dateTime(r.last_seen)));
+    (r.coverage_yard_h > 0 || r.coverage_layup_h > 0)
+      ? fig('Out of service', fmt.hours((r.coverage_yard_h || 0) + (r.coverage_layup_h || 0)),
+          [r.coverage_yard_h > 0 ? `${fmt.hours(r.coverage_yard_h)} at a shipyard` : null,
+           r.coverage_layup_h > 0 ? `${fmt.hours(r.coverage_layup_h)} laid up${r.coverage_layup_unconfirmed_h > 0 ? ` (${fmt.hours(r.coverage_layup_unconfirmed_h)} inferred from AIS silence, unconfirmed)` : ''}` : null]
+            .filter(Boolean).join(', ') + '; counted with zero on-board emissions')
+      : null,
+    fig('Last report', fmt.ago(r.last_seen), fmt.dateTime(r.last_seen))].filter(Boolean));
   renderClimateSection(panel.querySelector('.detail-climate'), r);
   const rk = panel.querySelector('.detail-rank');
   if (rk) rk.textContent = r.rank ? `Rank ${r.rank} of ${state.summary ? state.summary.rows.length : '–'} by ${m.label}` : 'Not ranked in this period';
@@ -761,7 +767,10 @@ function renderStatus() {
         h('li', {}, 'Positions come from AIS ship tracking, bought from a commercial data provider. Visitors of this page never trigger provider requests.'),
         h('li', {}, `For every report an emission rate is estimated from speed and navigation status with a simplified engine model (calc version ${state.health ? state.health.calc_version : '–'}). A rate holds until the next report, for at most ${(state.summary && state.summary.meta.max_gap_hours) || 7} h for live reports and ${(state.summary && state.summary.meta.max_gap_hours_history) || 1} h for track history.`),
         (state.summary && state.summary.meta.stationary_max_gap_hours > 0)
-          ? h('li', {}, `Track history only records position changes. If a yacht lies at the same spot (below ${state.summary.meta.stationary_v_kn} kn, within ${state.summary.meta.stationary_dist_sm} nm) before and after a gap, the gap counts as lying time for at most ${state.summary.meta.stationary_max_gap_hours} h.`)
+          ? h('li', {}, `Track history only records position changes. If a yacht lies at the same spot (below ${state.summary.meta.stationary_v_kn} kn, within ${state.summary.meta.stationary_dist_sm} nm) before and after a gap, the gap counts as lying time – in full where the days in between were checked (track history without position change, or live reports twice a day), otherwise for at most ${state.summary.meta.stationary_max_gap_hours} h.`)
+          : null,
+        (state.summary && state.summary.meta.stay_silent_min_days)
+          ? h('li', {}, `Lying yachts are counted with their hotel load (generators; shore power is not assumed). Exceptions with zero on-board emissions: a stay of more than ${state.summary.meta.stay_yard_min_hours} h at a listed shipyard (refit), a documented lay-up, and a listed port where the AIS has been silent for at least ${state.summary.meta.stay_silent_min_days} days (laid up from the last report; marked as unconfirmed).`)
           : null,
         h('li', {}, 'Coverage is the share of the selected period with reports. Totals are not extrapolated to time without reports.'),
         h('li', {}, 'Owner names are only shown when a cited source backs the ownership, and only where the site owner has made names visible.'),

@@ -259,111 +259,18 @@ function sendError(res, err) {
 }
 
 // ── ZEITINTEGRATION ──────────────────────────────────────────────────────────
-// Jede Meldung liefert eine Rate (kg/h). Diese Rate gilt ab ihrem Zeitstempel
-// bis zur nächsten Meldung derselben Yacht, höchstens aber MAX_GAP_HOURS lang.
-// Längere Lücken zählen nicht als Emission, sondern werden als "nicht abgedeckt"
-// ausgewiesen (coverage_h). Annahme: größtes geplantes Polling-Intervall 6 h
-// (unbewegte Yachten) + 1 h Toleranz für verspätete Meldungen.
-const MAX_GAP_HOURS = Number(process.env.MAX_GAP_HOURS) || 7;
-// Historie im 1-min-Raster (Basic; Trial 15 min): längere Lücke = echte Lücke (AIS aus / keine Abdeckung).
-// Annahme: 1 h (Recherche 17.10.2026, Abschn. 6).
-const MAX_GAP_HOURS_HISTORY = Number(process.env.MAX_GAP_HOURS_HISTORY) || 1;
-// Liegezeit-Regel (Paul 2026-11-07, Annahme, mit Prof. Baumann abzustimmen): Datalastic speichert nur
-// Positionsänderungen (belegt: API-Doku) → vor Anker/im Hafen entstehen stundenlange Lücken ohne Punkt.
-// Liegt die Yacht vor und nach einer Lücke langsamer als STATIONARY_V_KN und am selben Ort
-// (≤ STATIONARY_DIST_SM), gilt die Lücke als Liegezeit, höchstens STATIONARY_MAX_GAP_HOURS lang.
-// Methodisch angelehnt an IMO4, das Lücken interpoliert (Faber et al. 2021, S. 53–55).
-// Ausgewiesen als coverage_bridged_h (Anteil der Abdeckung, der nur durch die Regel entsteht).
-// STATIONARY_MAX_GAP_HOURS=0 schaltet die Regel ab.
-const envNum = (k, d) => (process.env[k] === undefined || process.env[k] === '' ? d : Number(process.env[k]));
-const STATIONARY_MAX_GAP_HOURS = envNum('STATIONARY_MAX_GAP_HOURS', 24);   // Annahme: höchstens 1 Tag
-const STATIONARY_V_KN = envNum('STATIONARY_V_KN', 2);                      // wie DETECT_V_KN / V_IDLE_KN
-const STATIONARY_DIST_SM = envNum('STATIONARY_DIST_SM', 0.3);              // wie DETECT_DISP_SM (Schwojkreis)
+// Rechnung und Regeln (Liegezeit A32, Liegezustände Hafen/Werft/Anker/Lay-up): lib/integrate.js.
+// Orte: data/ports.csv, data/yards.csv (lib/zones.js); belegte Lay-ups: data/tracking_state.csv.
+const stays = require('./lib/integrate');
+const { loadZones } = require('./lib/zones');
+const STAY = stays.stayParams();          // beim Start geprüft
+const ZONES = loadZones();                // fehlerhafte CSV → Start schlägt fehl (CI fängt es ab)
 
-// Menge = Σ Rate_i × Dauer_i, Dauer_i = [max(t_i, Fensterbeginn), min(t_(i+1), t_i + MAX_GAP(source), jetzt)]
-// Je (Yacht, UTC-Tag) gilt: liegt Historie vor (vessel_days.history_status = 'done'),
-// zählen nur Historienpunkte; sonst die Live-Punkte.
-// Fenster [t0, t1] beliebig (rollierend, Kalender, frei); Rechenlogik unverändert.
-// Früher: t0 = NOW() − Periode, t1 = NOW(). Eigentümer kommen nicht mehr aus positions.
 async function integrateEmissions(win) {
-  const result = await pool.query(`
-    WITH bounds AS (
-      SELECT $1::timestamptz                     AS t0,
-             $5::timestamptz                     AS t1,
-             make_interval(hours => $2)          AS max_gap,
-             make_interval(hours => $3)          AS max_gap_hist,
-             make_interval(hours => $7)          AS max_gap_stat,
-             $8::float8                          AS stat_v,
-             $9::float8                          AS stat_d
-    ),
-    pts AS (
-      -- Meldungen kurz vor dem Fenster einbeziehen: ihre Rate gilt ggf. noch im Fenster
-      SELECT p.*,
-             LEAD(p.timestamp)    OVER w AS next_ts,
-             LEAD(p.latitude)     OVER w AS next_lat,
-             LEAD(p.longitude)    OVER w AS next_lon,
-             LEAD(p.speed_knots)  OVER w AS next_sog
-      FROM positions p, bounds b
-      WHERE p.timestamp > b.t0 - GREATEST(b.max_gap, b.max_gap_stat)
-        AND p.timestamp <= b.t1
-        AND p.dataset = $4
-        AND p.source IN ('live', 'history')
-        AND (p.source = 'history' OR NOT EXISTS (
-              SELECT 1 FROM vessel_days v
-               WHERE v.dataset = p.dataset AND v.mmsi = p.mmsi
-                 AND v.day = (p.timestamp AT TIME ZONE 'UTC')::date
-                 AND v.history_status = 'done'))
-      WINDOW w AS (PARTITION BY p.mmsi ORDER BY p.timestamp, p.id)
-    ),
-    gap AS (
-      SELECT pts.*,
-             CASE WHEN pts.source = 'history' THEN b.max_gap_hist ELSE b.max_gap END AS gap_normal,
-             -- Liegezeit: beide Punkte langsam und am selben Ort (Haversine in sm)
-             (next_ts IS NOT NULL AND b.max_gap_stat > INTERVAL '0 hours'
-              AND COALESCE(speed_knots, 0) <= b.stat_v AND COALESCE(next_sog, 0) <= b.stat_v
-              AND latitude IS NOT NULL AND next_lat IS NOT NULL
-              AND 2 * 3440.065 * ASIN(SQRT(
-                    POWER(SIN(RADIANS(next_lat - latitude) / 2), 2)
-                    + COS(RADIANS(latitude)) * COS(RADIANS(next_lat))
-                      * POWER(SIN(RADIANS(next_lon - longitude) / 2), 2))) <= b.stat_d) AS stationary
-      FROM pts, bounds b
-    ),
-    seg AS (
-      SELECT gap.*,
-             GREATEST(EXTRACT(EPOCH FROM (
-               LEAST(COALESCE(next_ts, b.t1),
-                     gap.timestamp + CASE WHEN stationary THEN GREATEST(gap_normal, b.max_gap_stat) ELSE gap_normal END,
-                     b.t1)
-               - GREATEST(gap.timestamp, b.t0)
-             )) / 3600.0, 0) AS dt_h,
-             GREATEST(EXTRACT(EPOCH FROM (
-               LEAST(COALESCE(next_ts, b.t1), gap.timestamp + gap_normal, b.t1)
-               - GREATEST(gap.timestamp, b.t0)
-             )) / 3600.0, 0) AS dt_normal_h
-      FROM gap, bounds b
-    )
-    SELECT
-      s.mmsi,
-      (ARRAY_AGG(s.name     ORDER BY s.timestamp DESC))[1] AS name,
-      (ARRAY_AGG(s.flag     ORDER BY s.timestamp DESC))[1] AS flag,
-      (ARRAY_AGG(s.length_m ORDER BY s.timestamp DESC))[1] AS length_m,
-      ROUND(SUM(s.co2_kg_h  * s.dt_h)::numeric, 1)::float8 AS co2_kg_total,
-      ROUND(SUM(s.fuel_kg_h * s.dt_h)::numeric, 1)::float8 AS fuel_kg_total,
-      ROUND(SUM(s.nox_kg_h  * s.dt_h)::numeric, 1)::float8 AS nox_kg_total,
-      ROUND(SUM(s.sox_kg_h  * s.dt_h)::numeric, 2)::float8 AS sox_kg_total,
-      ROUND(SUM(s.dt_h)::numeric, 2)::float8               AS coverage_h,
-      $6::float8                                            AS period_h,
-      COUNT(*) FILTER (WHERE s.timestamp > (SELECT t0 FROM bounds))::int AS data_points,
-      ROUND(SUM(s.dt_h) FILTER (WHERE s.source = 'history')::numeric, 2)::float8 AS coverage_history_h,
-      ROUND(SUM(s.dt_h - s.dt_normal_h)::numeric, 2)::float8 AS coverage_bridged_h,
-      MAX(s.timestamp) AS last_seen
-    FROM seg s
-    GROUP BY s.mmsi
-    HAVING SUM(s.dt_h) > 0
-    ORDER BY co2_kg_total DESC
-  `, [win.t0.toISOString(), MAX_GAP_HOURS, MAX_GAP_HOURS_HISTORY, CFG.dataset, win.t1.toISOString(), win.period_h,
-      STATIONARY_MAX_GAP_HOURS, STATIONARY_V_KN, STATIONARY_DIST_SM]);
-  return result.rows;
+  return stays.integrateEmissions(pool, win, {
+    dataset: CFG.dataset, params: STAY, zones: ZONES, evidence: tracking.layupEvidence(),
+    fleetMmsi: YACHTS.map(y => y.mmsi),
+  });
 }
 
 // Cumulative emissions per yacht for a period (zeitgewichtet integriert)
@@ -380,9 +287,7 @@ app.get('/api/emissions/summary', async (req, res) => {
     res.json({
       meta: { ...windowMeta(win), ...range, dataset: CFG.dataset, calc_version: CALC_VERSION,
               yachts_tracked: YACHTS.length, yachts_with_data: rows.length,
-              max_gap_hours: MAX_GAP_HOURS, max_gap_hours_history: MAX_GAP_HOURS_HISTORY,
-              stationary_max_gap_hours: STATIONARY_MAX_GAP_HOURS, stationary_v_kn: STATIONARY_V_KN,
-              stationary_dist_sm: STATIONARY_DIST_SM,
+              ...stays.stayMeta(STAY, ZONES),
               visibility: req.ownerView },
       rows: rows.map(r => ({ ...r, flag_code: dash.flagCode(r.flag), category: 'yacht' })),
     });

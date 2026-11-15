@@ -1,0 +1,7 @@
+# Häfen und Marinas für die Liegezustände (Regel Paul, 2026-11-15; lib/zones.js).
+# Halt innerhalb des Kreises = Hafen: Hotelbetrieb. Schweigt das AIS dort mindestens STAY_SILENT_MIN_DAYS
+# (Live-Betrieb ab LIVE_SINCE), gilt die Zeit ab der letzten Meldung als Lay-up (Notstrom, 0).
+# Halt außerhalb aller Häfen und Werften = Anker (Hotelbetrieb, AIS-Pflicht).
+# Jede Zeile nur mit Quelle (source_url). Koordinaten in Dezimalgrad (WGS84), Radius in Seemeilen (≤ 5).
+# Änderungen nur per Commit/Pull Request (Freigabe Paul).
+name;lat;lon;radius_sm;source_url;note

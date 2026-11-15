@@ -1,0 +1,6 @@
+# Werften mit Refit/Trockendock für Superyachten (Regel Paul, 2026-11-15; lib/zones.js).
+# Halt innerhalb des Kreises länger als STAY_YARD_MIN_HOURS (72 h) = Werft: 0 Emissionen an Bord,
+# unabhängig davon, ob das AIS sendet. Kürzere Halte (Übergabe, Tanken) bleiben Hotelbetrieb.
+# Vorgehen: Bauwerften der Flotte, dann Refit-Standorte; jede Zeile nur mit Quelle (source_url).
+# Koordinaten in Dezimalgrad (WGS84), Radius in Seemeilen (≤ 5). Änderungen nur per Commit/PR (Freigabe Paul).
+name;lat;lon;radius_sm;source_url;note

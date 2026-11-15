@@ -185,7 +185,9 @@ const server = http.createServer(async (req, res) => {
         if (!(q.meta === '1')) return out(rows);
         return out({ meta: { ...windowMeta(w), ...RANGE, dataset: 'demo', calc_version: CALC_VERSION, yachts_tracked: FIX.yachts.length,
           yachts_with_data: rows.length, max_gap_hours: MAX_GAP_H, max_gap_hours_history: MAX_GAP_HIST_H,
-          stationary_max_gap_hours: 24, stationary_v_kn: 2, stationary_dist_sm: 0.3, visibility: v }, rows });
+          stationary_max_gap_hours: 24, stationary_v_kn: 2, stationary_dist_sm: 0.3, stay_yard_min_hours: 72,
+          stay_silent_min_days: 30, stay_max_bridge_days: 0, live_since: '2026-11-12T00:00:00.000Z', zones_ports: 0,
+          zones_yards: 0, visibility: v }, rows });
       }
       const hm = /^\/api\/yacht\/(\d{9})\/history$/.exec(p);
       if (hm) {

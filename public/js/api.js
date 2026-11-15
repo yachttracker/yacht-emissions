@@ -64,6 +64,8 @@ function mapSummaryRow(r) {
     nox_kg_total: num(r.nox_kg_total), sox_kg_total: num(r.sox_kg_total),
     coverage_h: num(r.coverage_h), coverage_history_h: num(r.coverage_history_h),
     coverage_bridged_h: num(r.coverage_bridged_h),
+    coverage_yard_h: num(r.coverage_yard_h), coverage_layup_h: num(r.coverage_layup_h),
+    coverage_layup_unconfirmed_h: num(r.coverage_layup_unconfirmed_h),
     period_h: num(r.period_h), data_points: num(r.data_points), last_seen: r.last_seen,
   };
   row.coverage = row.period_h ? Math.min(1, (row.coverage_h || 0) / row.period_h) : null;
