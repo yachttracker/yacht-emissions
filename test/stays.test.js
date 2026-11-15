@@ -44,9 +44,9 @@ before(async () => {
                         VALUES ($1, $2, $3, $4, $5, $6::float8, $6::float8 / 30, $6::float8 / 300, $6::float8 / 3.206, $7, $8, $9)`,
       [s.mmsi, s.id, p.lat, p.lon, p.sog, p.co2, p.ts, p.source, DS]);
     }
-    for (const [d, status] of s.days || []) {
-      await pool.query(`INSERT INTO vessel_days (dataset, mmsi, day, history_status) VALUES ($1, $2, $3::date, $4)`,
-        [DS, s.mmsi, d, status]);
+    for (const [d, status, liveHits = 0] of s.days || []) {
+      await pool.query(`INSERT INTO vessel_days (dataset, mmsi, day, history_status, live_hits)
+                        VALUES ($1, $2, $3::date, $4, $5)`, [DS, s.mmsi, d, status, liveHits]);
     }
   }
 });
