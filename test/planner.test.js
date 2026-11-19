@@ -230,7 +230,7 @@ test('Datalastic: Regel-Historie je Yacht ein Aufruf, to = Folgetag (exklusiv), 
   assert.ok(!notes.some(x => /Datensatzlimit/.test(x.note || '')), 'keine MST-Datensatzwarnung');
 });
 
-test('Datalastic: leere Tage werden am Folgetag genau einmal erneut abgefragt (kostenlos)', async () => {
+test('Datalastic: leere Tage werden an drei Folgetagen erneut abgefragt (kostenlos)', async () => {
   await clean();
   const now = new Date();                                  // history_at ist die echte Uhrzeit
   const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 86400000)
@@ -244,13 +244,16 @@ test('Datalastic: leere Tage werden am Folgetag genau einmal erneut abgefragt (k
   const r1 = await planner.runHistory(pool, dl, cfg, { now });
   assert.equal(r1.days_empty, 2 * YACHTS.length, 'erster Lauf: alles leer');
   assert.equal(r1.charged, 0);
-  // Gestern wurde < 24 h nach Tagesende abgefragt → erneut; vorgestern nicht
+  // Beide Tage wurden < 72 h nach Tagesende abgefragt → beide erneut (G-04, 19.11.2026)
   const c = await planner.buildHistoryCandidates(pool, cfg, { now });
-  assert.equal(c.length, YACHTS.length, 'nur gestern erneut');
-  assert.ok(c.every(x => x.day === yesterday && x.prio === 2));
-  // Simulierter Abruf 30 h nach Tagesende → kein weiterer Versuch
-  await pool.query(`UPDATE vessel_days SET history_at = $2::date + interval '54 hours' WHERE dataset = $1`, [DS, yesterday]);
-  assert.equal((await planner.buildHistoryCandidates(pool, cfg, { now })).length, 0);
+  assert.equal(c.length, 2 * YACHTS.length, 'gestern und vorgestern erneut');
+  assert.ok(c.every(x => x.prio === 2));
+  assert.ok(c.some(x => x.day === yesterday));
+  // Letzter Abruf 71 h nach Tagesende → noch einmal; 72 h nach Tagesende → kein weiterer Versuch
+  await pool.query(`UPDATE vessel_days SET history_at = day + interval '95 hours' WHERE dataset = $1`, [DS]);
+  assert.equal((await planner.buildHistoryCandidates(pool, cfg, { now })).length, 2 * YACHTS.length, '71 h: erneut');
+  await pool.query(`UPDATE vessel_days SET history_at = day + interval '96 hours' WHERE dataset = $1`, [DS]);
+  assert.equal((await planner.buildHistoryCandidates(pool, cfg, { now })).length, 0, '72 h: nicht mehr');
   assert.equal(planner.emptyNeedsRecheck({ history_status: 'done', day: yesterday }), false);
 });
 

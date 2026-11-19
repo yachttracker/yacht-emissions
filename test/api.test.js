@@ -166,10 +166,13 @@ after(async () => {
 });
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: ${a} vs ${b} (±${tol})`);
+// Zugang (öffentlicher Modus): mit Kopfzeile sieht man alles wie im privaten Modus
+const T = () => ({ 'x-site-access': TOKEN });
 
 test('bisherige Summary-Aufrufe liefern die Zahlen der Referenz (main)', async () => {
+  // mit Zugang: Fenster bis jetzt (öffentlich endet es auf der vollen Stunde, eigener Test unten)
   for (const [period, h] of [['day', 24], ['week', 168], ['month', 720]]) {
-    const r = await get(`/api/emissions/summary?period=${period}`);
+    const r = await get(`/api/emissions/summary?period=${period}`, T());
     assert.equal(r.status, 200);
     assert.ok(Array.isArray(r.json), 'Antwort bleibt ein Array');
     const ref = (await pool.query(REFERENCE_SQL, [h, 7, 1, DATASET])).rows;
@@ -186,7 +189,7 @@ test('bisherige Summary-Aufrufe liefern die Zahlen der Referenz (main)', async (
     }
   }
   // Tag rollierend: Yacht A durchgehend abgedeckt → 24 h × 100 kg/h
-  const day = (await get('/api/emissions/summary?period=day')).json.find(z => z.mmsi === A);
+  const day = (await get('/api/emissions/summary?period=day', T())).json.find(z => z.mmsi === A);
   close(day.co2_kg_total, 2400, 1, 'A Tag CO₂');
   close(day.coverage_h, 24, 0.02, 'A Tag Abdeckung');
 });
@@ -223,7 +226,7 @@ test('Liegezeit-Regel: Lücke zwischen zwei Punkten am selben Ort wird überbrü
 });
 
 test('neue Zeitfenster: year und calendar', async () => {
-  const y = await get('/api/emissions/summary?period=year&meta=1');
+  const y = await get('/api/emissions/summary?period=year&meta=1', T());
   assert.equal(y.json.meta.period_h, 8760);
   assert.equal(y.json.meta.mode, 'rolling');
   const a = y.json.rows.find(z => z.mmsi === A);
@@ -246,8 +249,27 @@ test('neue Zeitfenster: year und calendar', async () => {
   }
 });
 
-// Zugang (öffentlicher Modus): mit Kopfzeile sieht man alles wie im privaten Modus
-const T = () => ({ 'x-site-access': TOKEN });
+test('öffentlich: Fenster auf volle Stunden, freie Grenzen nur als Datum, keine Meldungsanzahl (G-02)', async () => {
+  const H = 3600000;
+  const p = await get('/api/emissions/summary?period=day&meta=1');
+  assert.equal(p.status, 200);
+  assert.equal(Date.parse(p.json.meta.window_to) % H, 0, 'Fensterende auf voller Stunde');
+  assert.equal(Date.parse(p.json.meta.window_from) % H, 0, 'Fensterbeginn auf voller Stunde');
+  assert.ok(p.json.rows.length > 0);
+  assert.ok(p.json.rows.every(r => !('data_points' in r)), 'keine Meldungsanzahl');
+  // mit Zugang unverändert bis jetzt und mit Meldungsanzahl
+  const t = await get('/api/emissions/summary?period=day&meta=1', T());
+  assert.ok(t.json.rows.every(r => 'data_points' in r));
+  // Minutenfenster öffentlich abgelehnt, mit Zugang erlaubt
+  const iso = `from=${yesterday()}T09:00:00Z&to=${yesterday()}T09:15:00Z`;
+  assert.equal((await get(`/api/emissions/summary?${iso}`)).status, 400);
+  assert.equal((await get(`/api/yacht/${A}/history?${iso}`)).status, 400);
+  assert.equal((await get(`/api/emissions/summary?${iso}`, T())).status, 200);
+  // Datumsfenster öffentlich wie bisher
+  const d = await get(`/api/emissions/summary?from=${yesterday()}&to=${yesterday()}&meta=1`);
+  assert.equal(d.status, 200);
+  assert.equal(d.json.meta.period_h, 24);
+});
 
 test('History: Fenster, Metadaten, Verdichtung für die Anzeige', async () => {
   const legacy = await get(`/api/yacht/${A}/history?period=day`, T());

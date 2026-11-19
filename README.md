@@ -83,17 +83,20 @@ Schalter per Railway-Variable, ohne Codeänderung (`lib/access.js`):
 | `private` (Standard, auch wenn nicht gesetzt) | Dashboard, API und Admin nur mit Zugang; `/health` bleibt offen |
 | `public` | Dashboard ohne Passwort; AIS-Rohdaten nur mit Zugang (siehe unten) |
 
-Zugang im privaten Modus mit `SITE_PASSWORD` oder `ADMIN_TOKEN`: Browser-Anmeldung
+Zugang im privaten Modus mit `SITE_PASSWORD` (`ADMIN_TOKEN` nur als Rückfall, solange `SITE_PASSWORD`
+fehlt; seit PR #22 ist das Seitenpasswort vom Admin-Schlüssel getrennt): Browser-Anmeldung
 (Benutzername beliebig), Link `…/?access=<Passwort>` (setzt ein Cookie für 30 Tage) oder
 Kopfzeile `x-site-access` für Skripte. Passwort ändern = Variable ändern, alte Cookies
 verfallen damit. Grund: Die API-Bedingungen von MyShipTracking erlauben nur interne
 Nutzung (Terms 4.2/4.3); öffentlich erst nach schriftlicher Klärung.
 
 Öffentlicher Modus (seit 12.11.2026, Datalastic Terms §8: berechnete Ergebnisse öffentlich, Rohdaten
-nicht offengelegt oder abgreifbar): Ohne Zugang sperrt die API `/api/yachts/latest`, `/api/identity`
-und `/api/review` (403), `/api/fleet` liefert keine letzte Position und keine Anbieter-Stammdaten, und
+nicht offengelegt oder abgreifbar): Ohne Zugang sperrt die API `/api/yachts/latest`, `/api/identity`,
+`/api/review` und `/api/stays` (403), `/api/fleet` liefert keine letzte Position und keine Anbieter-Stammdaten, und
 `/api/yacht/:mmsi/history` liefert nur Stundenmittel der berechneten Raten ohne Position und
-Geschwindigkeit (`PUBLIC_MIN_BUCKET_S`, Standard 3600). Mit Zugang (Cookie, `?access=`,
+Geschwindigkeit (`PUBLIC_MIN_BUCKET_S`, Standard 3600). Zeitangaben sind auf volle Stunden gerundet;
+Summary und Verlauf nehmen `from`/`to` nur als Datum an, Fenster enden auf der letzten vollen Stunde, und die
+Summary enthält keine Meldungsanzahl (`data_points`), damit sich keine Meldezeitpunkte herausrechnen lassen. Mit Zugang (Cookie, `?access=`,
 `x-site-access`, Basic) bleibt alles wie im privaten Modus; die geplanten Aufgaben rufen
 `/api/review?access=…` auf.
 

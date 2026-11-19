@@ -232,9 +232,9 @@ app.get('/api/yacht/:mmsi/history', async (req, res) => {
   try {
     const { mmsi } = req.params;
     if (!/^\d{9}$/.test(mmsi)) return res.status(400).json({ error: 'mmsi must have 9 digits' });
-    const win = resolveWindow(req.query);
-    const maxPoints = Math.min(Math.max(Number(req.query.max_points) || 0, 0), 5000);
     const pub = publicView(req);
+    const win = resolveWindow(req.query, Date.now(), { hourly: pub });   // öffentlich volle Stunden (G-02)
+    const maxPoints = Math.min(Math.max(Number(req.query.max_points) || 0, 0), 5000);
     const h = await dash.history(mmsi, win, maxPoints, { minBucketS: pub ? PUBLIC_MIN_BUCKET_S : 0 });
     // Öffentlich nur Stundenmittel der berechneten Raten: Zeitstempel = Beginn der Stunde (statt Zeitpunkt
     // der ersten Meldung), ohne Position, Geschwindigkeit, Quelle und Meldungsanzahl (P-02).
@@ -289,11 +289,14 @@ async function integrateEmissions(win) {
 // Ergebnisse 60 s zwischengespeichert (Daten kommen nur wenige Male am Tag hinzu).
 app.get('/api/emissions/summary', async (req, res) => {
   try {
-    const fresh = resolveWindow(req.query);      // prüft Parameter auch bei Cache-Treffer
-    const { win, rows } = await dash.cache(`sum:${CFG.dataset}:${windowKey(req.query)}`,
-      async () => ({ win: fresh, rows: await integrateEmissions(fresh) }));
     const pub = publicView(req);
-    const out = pub ? rows.map(r => ({ ...r, last_seen: coarseTime(r.last_seen) })) : rows;
+    // öffentlich: Fenster auf volle Stunden, freie Grenzen nur als Datum (Prüfbericht 19.11.2026, G-02);
+    // eigener Cache-Eintrag, damit öffentliche und vertrauenswürdige Fenster sich nicht vermischen
+    const fresh = resolveWindow(req.query, Date.now(), { hourly: pub });   // prüft Parameter auch bei Cache-Treffer
+    const { win, rows } = await dash.cache(`sum:${CFG.dataset}:${pub ? 'pub' : 'all'}:${windowKey(req.query)}`,
+      async () => ({ win: fresh, rows: await integrateEmissions(fresh) }));
+    // öffentlich ohne Meldungsanzahl je Yacht (wie P-02 beim Verlauf)
+    const out = pub ? rows.map(({ data_points, ...r }) => ({ ...r, last_seen: coarseTime(r.last_seen) })) : rows;
     if (!wantsMeta(req)) return res.json(out);
     const range = pub ? coarseRange(await dash.dataRange()) : await dash.dataRange();
     res.json({

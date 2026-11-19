@@ -96,7 +96,7 @@ imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;e
 9807956;CC Summer;diesel_mech;indication;5120;sourced;;2 × 2.560 kW;2 × MTU 16V 4000 M73;;;hs;18;indication;;;
 1006336;Tatoosh;diesel_mech;indication;6488;sourced;;2 × 3.244 kW;2 × Deutz SBV 16M 628;1000;indication;hs;16;indication;;;v_max SYT 16 vs. YB/YH 19
 9835707;Bliss;diesel_mech;sourced;4480;sourced;;Werft Feadship 2 × 2.240 kW;2 × Caterpillar 3516E;1800;sourced;hs;17;indication;;;Hybrid mit dieselelektrischem Fahrmodus → als mechanisch gerechnet (Annahme R3)
-9288215;Moonlight II;diesel_mech;indication;8120;indication;;R2 Leitquelle SYT 2 × 4.060 kW vs. Burgess 2 × 2.750 hp;2 × Caterpillar 3606;;unverified;;13;indication;;;CAT 3606: 900–1.000 rpm (Datenblatt) → Klasse ungeklärt
+9288215;Moonlight II;diesel_mech;indication;4060;indication;8120;R2 geringerer Wert (Korrektur 2026-11-19, Prüfbericht G-03): Burgess 2 × 2.750 hp, YachtBuyer 2 × 2.760 hp/2.030 kW, Camper & Nicholsons 2 × 2.750 hp → 2 × 2.030 kW, SYT 2 × 4.060 kW nur Obergrenze (für CAT 3606 unplausibel);2 × Caterpillar 3606;;unverified;;13;indication;;;CAT 3606: 900–1.000 rpm (Datenblatt) → Klasse ungeklärt
 9840829;O'Pari;diesel_mech;indication;5050;sourced;;2 × 2.525 kW;2 × Caterpillar 3516C-HD;;;hs;20;indication;;;boote-magazin nennt „Gensets“ (vermutlich Fehlbezeichnung)
 9798246;Defy (ex Viva);diesel_mech;sourced;5760;sourced;;Werft Feadship 2 × 2.880 kW;2 × MTU 16V 4000 M73L;2050;sourced;hs;20;indication;;;Hybrid: mechanisch für hohe Fahrt (Annahme R3) / Tier-III-Katalysator + DPF
 1013121;Lady S;diesel_mech;indication;4700;sourced;;Werft Feadship 2 × 2.350 kW;2 × Caterpillar 3516C;1800;sourced;hs;17.5;indication;;;

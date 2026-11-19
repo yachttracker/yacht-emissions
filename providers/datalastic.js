@@ -210,9 +210,15 @@ async function fetchLive(mmsis, { extended = false } = {}) {
   const wanted = new Set(qs.map(q => q.fleetMmsi));
   const { records, charged, calls } = await bulk(qs);
   const best = new Map();
+  const unassigned = [];
   for (const v of records) {
     const fm = fleetMmsiOf(v, wanted);
-    if (!fm) continue;
+    if (!fm) {
+      // bezahlt, aber keiner Flottenyacht zuzuordnen (P-04): Kennungen loggen, um falsche IMO/MMSI in
+      // data/fleet.csv zu finden. Ohne Position (Rohdaten bleiben im Log knapp).
+      unassigned.push({ imo: v.imo ?? null, mmsi: v.mmsi ?? null, name: v.name ?? null });
+      continue;
+    }
     const ts = parseUtc(v.last_position_UTC, v.last_position_epoch);
     const prev = best.get(fm);
     if (!prev || (ts && (!prev.ts || ts > prev.ts))) best.set(fm, { v, ts });
@@ -237,7 +243,11 @@ async function fetchLive(mmsis, { extended = false } = {}) {
       } : null,
     });
   }
-  return { positions: out, charged, calls };
+  if (unassigned.length) {
+    console.log(`[DL] ${unassigned.length} bezahlte Datensätze ohne Zuordnung zur Flotte (P-04):`,
+      JSON.stringify(unassigned).slice(0, 2000));
+  }
+  return { positions: out, charged, calls, unassigned: unassigned.length };
 }
 
 // Identitätsabgleich (lib/identity.js): Bulk über die IMO, alle Datensätze zurück.
