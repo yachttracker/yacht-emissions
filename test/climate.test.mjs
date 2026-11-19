@@ -15,6 +15,7 @@ test('AGWP CO2 reproduziert IPCC AR6 Tab. 7.SM.7', () => {
 test('GWP je Stoff (Standard: Skeie 2024, Holmes 2014)', () => {
   const g100 = C.gwp({ horizon: 100 }), g20 = C.gwp({ horizon: 20 });
   near(g100.n2o, 273, 1, 'N2O GWP100 (AR6: 273)');
+  near(g20.n2o, 273, 1, 'N2O GWP20 (AR6 Tab. 7.15: 273, P-11)');
   near(g100.so2, -94, 1, 'SO2 GWP100');
   near(g20.so2, -345, 2, 'SO2 GWP20');
   near(g100.nox, -13.4, 0.2, 'NOx GWP100 je kg NO2');
