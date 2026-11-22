@@ -18,6 +18,11 @@ export const A_N2O = 24.5e-12 / (N2O_TAU * (1 - Math.exp(-100 / N2O_TAU)));
 // N2O-Emission aus dem Kraftstoff: 0,034 g/kWh (HSD, MDO; belegt: IMO4 Tab. 59, S. 414)
 // geteilt durch SFC 185 g/kWh (Annahme: typischer Wert IMO4 Tab. 19) → kg N2O je kg Kraftstoff.
 export const N2O_PER_KG_FUEL = 0.034 / 185;
+// GWP N2O für die Kennzahlen: IPCC AR6 WGI Tab. 7.15 nennt 273 für 20 und 100 Jahre (belegt; enthält die
+// Wirkung von N2O auf Ozon und Methan). Die einfache Exponentialfunktion oben ergäbe für 20 a 281 (P-11,
+// Prüfbericht 15.11./19.11.2026, Wirkung < 0,1 %). Für Horizonte zwischen 10 und 100 a gilt 273 als
+// Annahme (AR6 nennt nur 20/100/500 a). A_N2O bleibt für die Nachwirkungskurve (afterEffect).
+export const N2O_GWP_AR6 = 273;
 
 // SO2 (als SO2, wie SOx in emissions.js: 2 · 0,97753 · S) – Sulfat, τ 0,011 a (belegt: Fuglestvedt 2010 Tab. 5/6).
 // F_SS je (kg/a): Skeie et al. 2024 0,073 W m-2 für 8,7 Tg SO2/a weniger → −8,4e-12 (abgeleitet).
@@ -63,7 +68,7 @@ export function gwp(opts = {}) {
   const noxN = (agwpStep(n.o3, NOX_O3_TAU, H) + agwpDecay(n.o3pm, n.tau, H) + agwpStep(n.ch4, n.tau, H)) / base;
   return {
     co2: 1,
-    n2o: agwpPulse(A_N2O, N2O_TAU, H) / base,
+    n2o: N2O_GWP_AR6,
     so2: agwpPulse(so2Fss / SO2_TAU, SO2_TAU, H) / base,
     nox: noxN * NOX_N_PER_NO2,
   };
