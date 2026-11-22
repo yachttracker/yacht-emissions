@@ -23,7 +23,7 @@ imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;e
 9819820;Solaris;diesel_electric;sourced;11702;sourced;11702;Genset-Summe (keine E-Motor-Angabe);Gensets 6 × MTU 16V 4000 M23S + 1 × 12V 4000 M23S;;;hs;18;indication;;;
 9809980;Scheherazade;diesel_mech;indication;13000;indication;13180;R2: 6.500–6.590 kW je Motor, geringerer Wert (itboat 7.512 hp nicht unabhängig, nicht berücksichtigt);2 × MTU 20V 1163 M84;;;hs;21;indication;;;v_max 15–21 widersprüchlich
 9853785;Nord;diesel_mech;indication;17200;sourced;17436;4 × 4.300–4.359 kW, geringerer Wert;4 × MTU 20V 4000 M93L;2100;indication;hs;20;indication;;;
-1007213;Octopus;diesel_electric;sourced;14320;sourced;14320;Genset-Summe (E-Motoren ohne Leistung);Gensets 8 × MTU 16V 4000 + 2 ABB-E-Motoren;;;hs;20;indication;;;
+1007213;Octopus;diesel_electric;sourced;14320;sourced;14320;Genset-Summe (E-Motoren ohne Leistung);Gensets 8 × MTU 16V 4000 + 2 ABB-E-Motoren;;;hs;19;sourced;;;v_max 19 kn (BOAT, YachtBuyer, Camper & Nicholsons; itboat 20) – Korrektur 2026-11-19
 9907196;Dragonfly;diesel_mech;indication;14600;sourced;;2 × 7.300 kW;2 × MAN 16V28/33D;1000;indication;hs;24;indication;;;Hybrid PTI/PTO + Pod → als mechanisch gerechnet (Annahme R3) / 1.000 rpm → nach IMO HSD
 9865087;Luminance;diesel_mech;indication;9004;indication;14600;R2 Leitquelle SYT (2 × MTU 4.502 kW) vs. YB/WP 2 × MAN 7.300 kW;2 × MTU 16V 1163 M74R (SYT);;;hs;20.5;indication;;;Motorhersteller widersprüchlich (MTU vs. MAN)
 8652201;Yas;diesel_mech;unverified;15660;indication;;2 × MTU 7.830 kW (SYT);2 × MTU (SYT) vs. 2 × Rolls-Royce-Gasturbine (BOAT);;;hs;30;indication;;;Antriebsart widersprüchlich (Diesel/Gasturbine) → Standard / ex-Fregatte
@@ -39,7 +39,7 @@ imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;e
 9044619;Maryah;diesel_electric;sourced;8002;indication;8002;Genset-Summe 5 × 2.146 hp (nur Yachtharbour);Gensets 5 × Caterpillar + 2 Azipods;;;hs;18;indication;;;
 9648788;Golden Odyssey;diesel_electric;sourced;6000;indication;;E-Fahrmotoren 8.046 hp (als Summe gelesen, geringere Lesart);Gensets widersprüchlich + 2 Wärtsilä-E-Motoren;;;hs;20.5;indication;;;
 9857298;Koru;sail_aux;sourced;2920;sourced;;Leitquelle SYT 2 × 1.460 kW (YB 2 × 1.095 kW);2 × MTU 16V 2000 M72;;;hs;;;;;v_max 17–20 nicht nach Motor/Segel getrennt → Standard
-9899650;Breakthrough;diesel_electric;sourced;7500;sourced;7500;Genset-Summe (E-Motoren ohne Leistung);3 × MTU-Gensets + Brennstoffzelle 3 MW;;;hs;17;indication;;;Brennstoffzelle nicht modelliert (Rechnung zu hoch)
+9899650;Breakthrough;diesel_electric;sourced;6400;sourced;9258;R3 E-Fahrmotoren 2 × ABB DO1100 à 3.200 kW (Werft Feadship), Genset-Summe 7.475 + 1.783 ekW als Obergrenze – Korrektur 2026-11-19;3 × MTU-Gensets + Brennstoffzelle 3 MW;;;hs;17;indication;;;Brennstoffzelle nicht modelliert (Rechnung zu hoch)
 9840178;Seven Seas;diesel_mech;indication;7178;indication;;2 × 3.589 kW;2 × MTU 20V 4000 M73L;;;hs;20;indication;;;Länge Repo 125 m vs. 109 m – Zuordnung prüfen
 9770270;Multiverse;diesel_electric;sourced;5116;sourced;5190;Genset-Summe 5.116 (scheepvaartwest) vs. 5.190 kW (SYT);Gensets 2 × CAT 3516C + 4 × CAT C18 + 2 Azimut-Pods;;;hs;16;indication;;;v_max SYT 16 vs. YB/YCF/BOAT 12 vs. 17,5
 9881627;Kismet;diesel_mech;indication;6400;sourced;;2 × 3.200 kW;2 × MTU 20V 4000 M73L;;;hs;18;indication;;;Hybrid mit E-Fahrmodus → als mechanisch gerechnet (Annahme R3)
@@ -47,7 +47,7 @@ imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;e
 1002380;Lady Moura;diesel_mech;indication;10242;sourced;;2 × 5.121 kW;2 × Deutz TBD 510B V12;;;;22;indication;;;Drehzahl nicht gefunden → Standard
 6603012;Alexander;diesel_mech;indication;5924;indication;6002;R2 Leitquelle YB 2 × 2.962 kW vs. WP 2 × 3.001 kW;2 × MAN G10V-52/74MA;;unverified;;18;indication;;;Drehzahl nicht gefunden (vermutlich mittelschnell, offen)
 1009340;A;diesel_mech;indication;9000;sourced;;2 × 4.500 kW;2 × MAN 20RK280;1000;indication;hs;23;indication;;;1.000 rpm (YCF) → nach IMO HSD
-9857511;Launchpad;diesel_electric;indication;15816;indication;15816;Genset-Summe (keine E-Motor-Angabe);Gensets 4 × MTU 20V 4000 M93L;;;hs;24;indication;;;
+9857511;Launchpad;diesel_electric;indication;15600;sourced;15600;Genset-Summe als Obergrenze: Werft Feadship 4 × MTU 20V4000M93 à 3.900 kW (getrennte Generatoren 4 × 557 ekW, Antriebsart ungeklärt) – Korrektur 2026-11-19;Gensets 4 × MTU 20V 4000 M93L;;;hs;24;indication;;;
 9692545;Andromeda;diesel_electric;sourced;5190;indication;5190;Genset-Summe SYT (YCF/WP abweichend);Gensets 2 × CAT 3516C + 4 × CAT C18;;;hs;16;indication;;;
 9865075;Liva O;diesel_electric;sourced;4400;sourced;6277;E-Fahrmotoren 2 × 2.200 kW / Genset 6.277 kW;Gensets 2 × Caterpillar + 3 × Zeppelin, 2 × RAMME-E-Motoren;;;hs;18;indication;;;
 9754032;Zoza (ex Luminosity);diesel_electric;sourced;4400;indication;5316;E-Fahrmotoren 2 × 2.200 kW (YB) / Genset 5.316 kW (SYT);Gensets 6 × CAT C32 + 2 ABB Azipod;;;hs;16;indication;;;Batterie (Indiz) nicht modelliert
@@ -98,7 +98,7 @@ imo;name;propulsion;propulsion_status;mcr_kw;mcr_status;mcr_upper_kw;mcr_basis;e
 9835707;Bliss;diesel_mech;sourced;4480;sourced;;Werft Feadship 2 × 2.240 kW;2 × Caterpillar 3516E;1800;sourced;hs;17;indication;;;Hybrid mit dieselelektrischem Fahrmodus → als mechanisch gerechnet (Annahme R3)
 9288215;Moonlight II;diesel_mech;indication;4060;indication;8120;R2 geringerer Wert (Korrektur 2026-11-19, Prüfbericht G-03): Burgess 2 × 2.750 hp, YachtBuyer 2 × 2.760 hp/2.030 kW, Camper & Nicholsons 2 × 2.750 hp → 2 × 2.030 kW, SYT 2 × 4.060 kW nur Obergrenze (für CAT 3606 unplausibel);2 × Caterpillar 3606;;unverified;;13;indication;;;CAT 3606: 900–1.000 rpm (Datenblatt) → Klasse ungeklärt
 9840829;O'Pari;diesel_mech;indication;5050;sourced;;2 × 2.525 kW;2 × Caterpillar 3516C-HD;;;hs;20;indication;;;boote-magazin nennt „Gensets“ (vermutlich Fehlbezeichnung)
-9798246;Defy (ex Viva);diesel_mech;sourced;5760;sourced;;Werft Feadship 2 × 2.880 kW;2 × MTU 16V 4000 M73L;2050;sourced;hs;20;indication;;;Hybrid: mechanisch für hohe Fahrt (Annahme R3) / Tier-III-Katalysator + DPF
+9798246;Defy (ex Viva);diesel_mech;sourced;5760;sourced;;Werft Feadship 2 × 2.880 kW;2 × MTU 16V 4000 M73L;2050;sourced;hs;19;sourced;;;Hybrid: mechanisch für hohe Fahrt (Annahme R3) / Tier-III-Katalysator + DPF | v_max 19 kn (Werft Feadship) – Korrektur 2026-11-19
 1013121;Lady S;diesel_mech;indication;4700;sourced;;Werft Feadship 2 × 2.350 kW;2 × Caterpillar 3516C;1800;sourced;hs;17.5;indication;;;
 9377456;Eos;sail_aux;sourced;1740;indication;3480;Werft: ein MTU à 1.740 kW (SYT/yacht.de 2 × 1.740 kW);MTU (Modell nicht genannt);;;hs;16;indication;;;v_max nicht nach Motor/Segel getrennt
 9804332;Artefact;diesel_electric;sourced;6016;indication;6016;Genset-Summe (keine E-Motor-Angabe);Gensets 2 × CAT 3516C + 2 × CAT C18 + 2 Azipods;;;hs;17.8;indication;;;SCR vorhanden

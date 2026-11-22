@@ -35,7 +35,7 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 31;Golden Odyssey;9648788;310724000;124.0;7690;2015;private;sourced;28;31;
 32;Koru;9857298;319225400;125.0;3493;2023;private;sourced;75;28;MMSI aus fleet.js bestätigt
 33;Breakthrough;9899650;319300600;119.0;7247;2025;private;sourced;29;34;
-34;Seven Seas;9840178;319225300;125.0;4444;2022;private;sourced;61;29;AIS-Abmessung vermutlich falsch
+34;Seven Seas;9840178;319225300;109.0;4444;2022;private;sourced;61;29;AIS-Abmessung vermutlich falsch | Länge 109 m (BOAT, SYT, YachtBuyer; Oceanco Y720), Korrektur 2026-11-19
 36;Multiverse;9770270;319105100;116.0;6862;2018;private;sourced;32;42;MaritimeOptima-URL zeigt alten Namen ULYSSES
 38;Kismet;9881627;538071476;122.0;4918;2024;private;sourced;54;33;MMSI aus fleet.js bestätigt
 39;O3 (ex Shackleton);9865738;538072318;107.0;6561;2026;private;sourced;34;59;Shackleton umbenannt in O3 → Dublette
@@ -78,7 +78,7 @@ nr;name;imo;mmsi;length_m;gt;build_year;segment;mmsi_status;rank_gt;rank_length;
 78;Ulysses;9927940;538072099;102.0;2999;2024;private;sourced;89;69;bei VF als ULYSSESS; bestätigt durch MMSI-Abgleich über IMO (MST, 2026-10-31), letzte Meldung 2026-10-01 08:22 UTC; MMSI 319278500 bei MST zuletzt 2024-03-26, neue MMSI 538072099 (MH) laut Tradlinx (letzte Meldung 2026-09-22), abgerufen 2026-10-31; per IMO-Abgleich bestätigen
 81;Carinthia VII;8994001;538071886;97.2;3643;2002;private;sourced;72;79;MMSI aus fleet.js bestätigt
 82;Symphony;1012098;319076700;101.0;3463;2015;private;sourced;78;72;MMSI aus fleet.js bestätigt
-84;NEOM (ex H3);1006245;248997000;95.0;3521;2000;private;conflict;74;85;VF führt IMO 1006245 inzwischen als NEOM (MMSI 248997000), frühere MMSI 232883000 (Indian Empress) – aktuellen Namen prüfen; MMSI 248997000 bei MST zuletzt 2019-08-30; MagicPort führt IMO 1006245 als H3, MMSI 319259800 (KY), 105 m, in Fahrt (abgerufen 2026-10-31) – Widerspruch Name/Länge, per IMO-Abgleich klären
+84;NEOM (ex H3);1006245;248997000;105.3;3521;2000;private;conflict;74;85;VF führt IMO 1006245 inzwischen als NEOM (MMSI 248997000), frühere MMSI 232883000 (Indian Empress) – aktuellen Namen prüfen; MMSI 248997000 bei MST zuletzt 2019-08-30; MagicPort führt IMO 1006245 als H3, MMSI 319259800 (KY), 105 m, in Fahrt (abgerufen 2026-10-31) – Widerspruch Name/Länge, per IMO-Abgleich klären | heute H3, 105,3 m nach Umbau 2023 (BOAT, YachtBuyer), Korrektur 2026-11-19
 85;Attessa IV;9179830;319630000;101.0;2864;1999;private;sourced;105;74;
 86;Norn;9869758;319261700;89.0;3491;2023;private;sourced;76;106;MaritimeOptima führt Bauname 1601; bestätigt durch MMSI-Abgleich über IMO (MST, 2026-10-31), letzte Meldung 2026-10-31 08:46 UTC; MMSI 211891450 (DE, Überführung) bei MST zuletzt 2023-04-17, neue MMSI 319261700 (KY) laut Tradlinx (letzte Meldung 2026-10-27), abgerufen 2026-10-31; per IMO-Abgleich bestätigen
 87;Madame Gu;1011331;533133987;99.0;2991;2013;private;sourced;95;77;MMSI-Abgleich über IMO (MST, 2026-10-31): MST führt die IMO unter 533133987, letzte Meldung 2026-10-25 04:33 UTC; alte MMSI 319906000
